@@ -64,3 +64,4 @@ export function Avatar({ src, name, size = "md", online = false, className }: Av
     </div>
   );
 }
+

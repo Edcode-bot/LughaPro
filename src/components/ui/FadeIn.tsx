@@ -15,3 +15,4 @@ export function FadeIn({ children, className }: { children: ReactNode; className
     </motion.div>
   );
 }
+

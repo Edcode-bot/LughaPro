@@ -25,3 +25,4 @@ export function StarRating({ rating, size = 16, showValue = true }: StarRatingPr
     </div>
   );
 }
+

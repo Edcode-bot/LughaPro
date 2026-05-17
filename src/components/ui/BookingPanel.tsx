@@ -6,15 +6,41 @@ import { Button } from "./Button";
 
 type BookingPanelProps = {
   hourlyRate: number;
+  tutorId?: string;
 };
 
 const durations = [30, 60, 90];
 const payments = ["cUSD", "CELO", "Card"];
 
-export function BookingPanel({ hourlyRate }: BookingPanelProps) {
+export function BookingPanel({ hourlyRate, tutorId }: BookingPanelProps) {
   const [duration, setDuration] = useState(60);
   const [payment, setPayment] = useState("cUSD");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const price = useMemo(() => ((hourlyRate * duration) / 60).toFixed(2), [duration, hourlyRate]);
+
+  async function bookSession() {
+    if (!tutorId) return;
+    setLoading(true);
+    setMessage(null);
+
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const response = await fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tutor_id: tutorId,
+        scheduled_at: scheduledAt,
+        duration_minutes: duration,
+        payment_method: payment.toLowerCase(),
+        notes: "Booked from tutor profile",
+      }),
+    });
+    const result = await response.json() as { message?: string; error?: string };
+
+    setMessage(response.ok ? "Booking request sent." : result.error ?? "Unable to create booking.");
+    setLoading(false);
+  }
 
   return (
     <div className="sticky top-24 rounded-3xl border border-forest/10 bg-white p-6 shadow-luxury">
@@ -40,7 +66,9 @@ export function BookingPanel({ hourlyRate }: BookingPanelProps) {
         <div className="flex items-center justify-between"><span className="text-forest/65">Total</span><span className="text-3xl font-black text-forest">${price}</span></div>
         <p className="mt-2 text-xs font-bold text-jade">Pay with cUSD and save 10%</p>
       </div>
-      <Button className="mt-6 w-full" size="lg">Book Session</Button>
+      {message ? <p className="mt-4 text-sm font-semibold text-jade">{message}</p> : null}
+      <Button className="mt-6 w-full" size="lg" loading={loading} onClick={bookSession}>Book Session</Button>
     </div>
   );
 }
+

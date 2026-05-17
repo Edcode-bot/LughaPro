@@ -1,4 +1,5 @@
 import { MapPin } from "lucide-react";
+import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -59,8 +60,11 @@ export function TutorCard({ tutor }: TutorCardProps) {
           <span className="text-2xl font-black text-forest">${tutor.price}</span>
           <span className="text-sm text-forest/60">/hr</span>
         </div>
-        <Button>Book Now</Button>
+        <Link href={`/tutor/${tutor.id}`}>
+          <Button>Book Now</Button>
+        </Link>
       </div>
     </Card>
   );
 }
+

@@ -16,3 +16,4 @@ export function ExpandableAbout({ text }: { text: string }) {
     </div>
   );
 }
+

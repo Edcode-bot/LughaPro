@@ -30,3 +30,4 @@ export function Badge({ className, tone = "default", children, ...props }: Badge
     </span>
   );
 }
+

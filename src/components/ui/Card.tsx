@@ -25,3 +25,4 @@ export function Card({ className, cream = false, children }: CardProps) {
     </motion.div>
   );
 }
+

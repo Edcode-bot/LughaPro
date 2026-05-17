@@ -77,3 +77,4 @@ export const reviews = [
   { name: "Elena Rossi", rating: 4.5, date: "Apr 29, 2026", comment: "The cultural context helped me prepare for work in Arusha with confidence." },
   { name: "Daniel Okafor", rating: 5, date: "Apr 21, 2026", comment: "Professional, warm, and very organized. Best online tutor experience I have had." },
 ];
+

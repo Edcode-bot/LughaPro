@@ -1,4 +1,4 @@
-﻿import { createConfig, http } from 'wagmi'
+import { createConfig, http } from 'wagmi'
 import { celo, celoAlfajores } from 'wagmi/chains'
 import { connectorsForWallets } from '@rainbow-me/rainbowkit'
 import { metaMaskWallet, walletConnectWallet, coinbaseWallet } from '@rainbow-me/rainbowkit/wallets'
@@ -24,3 +24,4 @@ export const config = createConfig({
     [celoAlfajores.id]: http(process.env.NEXT_PUBLIC_CELO_RPC_URL),
   },
 })
+
