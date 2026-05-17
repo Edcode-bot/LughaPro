@@ -4,17 +4,12 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import clsx from "clsx";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const links = ["Find Tutors", "How it Works", "Pricing"];
 
 export function NavBar() {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-forest/10 bg-off-white/85 backdrop-blur-xl">
@@ -34,7 +29,7 @@ export function NavBar() {
           ))}
         </div>
         <div className="hidden md:block">
-          {mounted ? <ConnectButton /> : <div className="h-10 w-36 rounded-full bg-gold/20" />}
+          <ConnectButton />
         </div>
         <button
           aria-label="Toggle menu"
@@ -56,7 +51,7 @@ export function NavBar() {
               {link}
             </a>
           ))}
-          {mounted ? <ConnectButton /> : <div className="h-10 w-36 rounded-full bg-gold/20" />}
+          <ConnectButton />
         </div>
       </div>
     </header>

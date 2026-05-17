@@ -1,9 +1,26 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { celo, celoAlfajores } from "wagmi/chains";
+﻿import { createConfig, http } from 'wagmi'
+import { celo, celoAlfajores } from 'wagmi/chains'
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import { metaMaskWallet, walletConnectWallet, coinbaseWallet } from '@rainbow-me/rainbowkit/wallets'
 
-export const wagmiConfig = getDefaultConfig({
-  appName: "LughaPro",
-  projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ?? "",
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Recommended',
+      wallets: [metaMaskWallet, walletConnectWallet, coinbaseWallet],
+    },
+  ],
+  {
+    appName: 'LughaPro',
+    projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || 'placeholder',
+  }
+)
+
+export const config = createConfig({
   chains: [celo, celoAlfajores],
-  ssr: true,
-});
+  connectors,
+  transports: {
+    [celo.id]: http(),
+    [celoAlfajores.id]: http(process.env.NEXT_PUBLIC_CELO_RPC_URL),
+  },
+})

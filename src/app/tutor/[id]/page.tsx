@@ -1,3 +1,5 @@
+"use client";
+
 import { Languages, MapPin } from "lucide-react";
 import { AvailabilityGrid } from "@/components/ui/AvailabilityGrid";
 import { Avatar } from "@/components/ui/Avatar";
@@ -11,8 +13,8 @@ import { NavBar } from "@/components/ui/NavBar";
 import { StarRating } from "@/components/ui/StarRating";
 import { reviews, tutors } from "@/lib/mock-data";
 
-export default async function TutorProfile({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function TutorProfile({ params }: { params: { id: string } }) {
+  const { id } = params;
   const tutor = tutors.find((item) => item.id === id) ?? tutors[0];
 
   return (
