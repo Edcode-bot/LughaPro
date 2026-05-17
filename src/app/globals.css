@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8f4ef;
+  --foreground: #1a4731;
+  --forest: #1a4731;
+  --jade: #2d6a4f;
+  --mint: #52b788;
+  --gold: #d4a017;
+  --cream: #fdf6e3;
+  --off-white: #f8f4ef;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-forest: var(--forest);
+  --color-jade: var(--jade);
+  --color-mint: var(--mint);
+  --color-gold: var(--gold);
+  --color-cream: var(--cream);
+  --color-off-white: var(--off-white);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(212, 160, 23, 0.35);
+  color: var(--forest);
+}
+
+.african-pattern {
+  background-image: radial-gradient(rgba(253, 246, 227, 0.16) 1.2px, transparent 1.2px),
+    linear-gradient(135deg, rgba(82, 183, 136, 0.08) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(212, 160, 23, 0.08) 25%, transparent 25%);
+  background-position: 0 0, 18px 18px, 18px 18px;
+  background-size: 28px 28px, 36px 36px, 36px 36px;
 }
