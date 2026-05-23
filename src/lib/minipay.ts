@@ -8,7 +8,7 @@ type MiniPayEthereumProvider = EIP1193Provider & {
 
 declare global {
   interface Window {
-    ethereum?: MiniPayEthereumProvider;
+    ethereum?: any;
   }
 }
 
