@@ -1,9 +1,6 @@
 import { MapPin } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { Badge } from "./Badge";
-import { Button } from "./Button";
-import { Card } from "./Card";
 import { StarRating } from "./StarRating";
 
 export type Tutor = {
@@ -13,7 +10,7 @@ export type Tutor = {
   rating: number;
   price: number;
   languages: string[];
-  payments: Array<"cUSD" | "CELO" | "Fiat">;
+  payments: Array<"cUSD" | "CELO" | "Card" | "Fiat">;
   online: boolean;
   bio: string;
   image?: string;
@@ -25,47 +22,62 @@ type TutorCardProps = {
   href?: string;
 };
 
-export function TutorCard({ tutor, href }: TutorCardProps) {
-  return (
-    <Card className="flex h-full flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar name={tutor.name} src={tutor.image} online={tutor.online} size="lg" />
-          <div>
-            <h3 className="text-lg font-bold text-forest">{tutor.name}</h3>
-            <div className="mt-1 flex items-center gap-1 text-sm text-forest/65">
-              <MapPin className="h-4 w-4" />
-              {tutor.location}
-            </div>
-          </div>
-        </div>
-        {tutor.online ? <Badge tone="online">Online</Badge> : null}
-      </div>
-      <StarRating rating={tutor.rating} />
-      <p className="line-clamp-3 text-sm leading-6 text-forest/70">{tutor.bio}</p>
-      <div className="flex flex-wrap gap-2">
-        {tutor.languages.map((language) => (
-          <Badge key={language}>{language}</Badge>
-        ))}
-        {tutor.topTutor ? <Badge tone="top">Top Tutor</Badge> : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {tutor.payments.map((payment) => (
-          <Badge key={payment} tone={payment === "cUSD" ? "cusd" : payment === "CELO" ? "celo" : "new"}>
-            {payment}
-          </Badge>
-        ))}
-      </div>
-      <div className="mt-auto flex items-center justify-between border-t border-forest/10 pt-5">
-        <div>
-          <span className="text-2xl font-black text-forest">${tutor.price}</span>
-          <span className="text-sm text-forest/60">/hr</span>
-        </div>
-        <Link href={href ?? `/tutor/${tutor.id}`}>
-          <Button>Book Now</Button>
-        </Link>
-      </div>
-    </Card>
-  );
+function normalizePayment(payment: Tutor["payments"][number]) {
+  if (payment === "Fiat") return "Card";
+  return payment;
 }
 
+export function TutorCard({ tutor, href }: TutorCardProps) {
+  const payments = [...new Set(tutor.payments.map(normalizePayment))];
+
+  return (
+    <article className="flex h-full flex-col rounded-2xl bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+      <div className="flex flex-col items-center text-center">
+        <Avatar name={tutor.name} src={tutor.image} online={tutor.online} size="lg" />
+        <h3 className="mt-4 font-serif text-xl font-bold text-forest">{tutor.name}</h3>
+        <p className="mt-1 flex items-center gap-1 text-sm text-foreground/60">
+          <MapPin className="h-3.5 w-3.5" />
+          {tutor.location}
+        </p>
+        <div className="mt-2">
+          <StarRating rating={tutor.rating} />
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {tutor.languages.map((language) => (
+          <span
+            key={language}
+            className="rounded-full bg-forest px-3 py-1 text-xs font-bold text-white"
+          >
+            {language}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {payments.map((payment) => (
+          <span
+            key={payment}
+            className="rounded-full bg-off-white px-2.5 py-1 text-xs font-semibold text-forest ring-1 ring-forest/10"
+          >
+            {payment}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-auto pt-6">
+        <p className="text-center">
+          <span className="text-3xl font-black text-gold">${tutor.price}</span>
+          <span className="text-sm text-foreground/60">/hr</span>
+        </p>
+        <Link
+          href={href ?? `/tutor/${tutor.id}`}
+          className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-gold text-sm font-bold text-foreground transition hover:bg-[#e6ac00]"
+        >
+          Book Now
+        </Link>
+      </div>
+    </article>
+  );
+}

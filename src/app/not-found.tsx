@@ -4,7 +4,7 @@ import Image from 'next/image'
 export default function NotFound() {
   return (
     <main className="grid min-h-screen place-items-center bg-off-white px-5 text-center text-forest">
-      <div className="max-w-xl rounded-3xl bg-white p-8 shadow-luxury">
+      <div className="max-w-xl rounded-3xl bg-white p-8 shadow-sm">
         <Image src="/logo.png" alt="LughaPro" width={120} height={36} className="mx-auto h-10 w-auto" />
         <p className="text-sm font-black uppercase tracking-[0.3em] text-gold">404</p>
         <h1 className="mt-4 font-serif text-5xl font-black">Ukurasa haukupatikana</h1>

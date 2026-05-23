@@ -47,7 +47,7 @@ export function TransactionFlow({ step, tutorName, date, duration, amount, payme
   }
 
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-luxury">
+    <div className="rounded-3xl bg-white p-5 shadow-sm">
       <h3 className="font-serif text-2xl font-black text-forest">Review booking</h3>
       <div className="mt-4 rounded-2xl bg-cream p-4 text-sm text-forest/75">
         <p><span className="font-bold text-forest">Tutor:</span> {tutorName}</p>
@@ -63,7 +63,7 @@ export function TransactionFlow({ step, tutorName, date, duration, amount, payme
 
   function StatePanel({ icon, title, subtitle, children, txHash: hash }: { icon: React.ReactNode; title: string; subtitle: string; children?: React.ReactNode; txHash?: string | null }) {
     return (
-      <div className="rounded-3xl bg-white p-6 text-center shadow-luxury">
+      <div className="rounded-3xl bg-white p-6 text-center shadow-sm">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-cream">{icon}</div>
         <h3 className="mt-5 font-serif text-2xl font-black text-forest">{title}</h3>
         <p className="mt-2 text-forest/65">{subtitle}</p>

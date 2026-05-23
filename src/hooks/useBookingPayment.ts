@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { Address, Hex, Hash, isAddress, keccak256, stringToHex } from "viem";
 import { usePublicClient } from "wagmi";
-import { CONTRACT_ADDRESSES, CUSD_ALFAJORES_ADDRESS } from "@/lib/contracts";
+import { CONTRACT_ADDRESSES, CUSD_MAINNET_ADDRESS } from "@/lib/contracts";
 import { getCELOBalance, getCUSDBalance } from "@/lib/minipay";
 import { PaymentMethod } from "@/types";
 import { useBookingEscrow } from "@/hooks/useContracts";
@@ -50,11 +50,11 @@ export function useBookingPayment({ bookingId, tutorAddress, amount, paymentMeth
       if (balance < amount) throw new Error("insufficient funds");
 
       const bookingBytes32 = keccak256(stringToHex(bookingId)) as Hex;
-      const token = paymentMethod === "cusd" ? CUSD_ALFAJORES_ADDRESS : "0x0000000000000000000000000000000000000000" as Address;
+      const token = paymentMethod === "cusd" ? CUSD_MAINNET_ADDRESS : "0x0000000000000000000000000000000000000000" as Address;
 
       if (paymentMethod === "cusd") {
         setStep("approving");
-        const approveHash = await escrow.approveToken(CUSD_ALFAJORES_ADDRESS, amount);
+        const approveHash = await escrow.approveToken(CUSD_MAINNET_ADDRESS, amount);
         await publicClient?.waitForTransactionReceipt({ hash: approveHash });
       }
 
@@ -74,5 +74,5 @@ export function useBookingPayment({ bookingId, tutorAddress, amount, paymentMeth
 }
 
 export function getEscrowAddress() {
-  return CONTRACT_ADDRESSES.alfajores.BookingEscrow;
+  return CONTRACT_ADDRESSES.celo.BookingEscrow;
 }

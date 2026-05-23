@@ -14,15 +14,15 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-gold text-forest shadow-lg shadow-gold/25 hover:bg-[#e0b234]",
-  secondary: "border border-jade/30 bg-white/70 text-jade hover:border-jade hover:bg-cream",
-  ghost: "border border-cream/30 bg-white/10 text-cream backdrop-blur hover:bg-white/20",
+  primary: "bg-gold text-foreground font-bold hover:bg-[#e6ac00] transition",
+  secondary: "border-2 border-forest text-forest font-bold rounded-full hover:bg-forest hover:text-white transition",
+  ghost: "border-2 border-white text-white font-bold rounded-full hover:bg-white hover:text-forest transition",
 };
 
 const sizes: Record<ButtonSize, string> = {
   sm: "h-9 px-4 text-sm",
   md: "h-11 px-5 text-sm",
-  lg: "h-13 px-7 text-base",
+  lg: "h-14 px-8 text-base",
 };
 
 export function Button({
@@ -37,7 +37,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:cursor-not-allowed disabled:opacity-60",
         variants[variant],
         sizes[size],
         className,
@@ -45,9 +45,8 @@ export function Button({
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin border-gold text-gold" /> : null}
       {children}
     </button>
   );
 }
-

@@ -16,7 +16,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     <main className="min-h-screen bg-off-white px-5 py-10 text-forest">
       <div className="mx-auto max-w-4xl">
         <Link href="/dashboard" className="text-sm font-bold text-jade hover:underline">← Back to dashboard</Link>
-        <section className="mt-6 rounded-3xl bg-white p-6 shadow-luxury">
+        <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
           <CalendarDays className="h-10 w-10 text-gold" />
           <div className="mt-5 flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <div><h1 className="font-serif text-4xl font-black">Booking with {booking.tutor.profile.full_name}</h1><p className="mt-2 text-forest/65">Booking ID: {booking.id}</p></div>

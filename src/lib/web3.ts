@@ -14,6 +14,6 @@ export const config = createConfig({
   ],
   transports: {
     [celo.id]: http('https://forno.celo.org'),
-    [celoAlfajores.id]: http('https://alfajores-forno.celo-testnet.org'),
+    [celoAlfajores.id]: http('https://forno.celo.org'),
   },
 })

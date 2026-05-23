@@ -43,7 +43,7 @@ export function ReviewModal({ open, bookingId, tutorId, onClose }: ReviewModalPr
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-[90] grid place-items-center bg-forest/70 px-5 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-luxury">
+          <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div><h2 className="font-serif text-3xl font-black text-forest">How was your session?</h2><p className="mt-2 text-forest/65">Share your experience to help future learners.</p></div>
               <button onClick={onClose} aria-label="Close review modal"><X className="h-5 w-5 text-forest" /></button>

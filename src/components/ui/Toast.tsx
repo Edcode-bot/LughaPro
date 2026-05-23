@@ -68,7 +68,7 @@ function ToastContainer({ items, dismiss }: { items: ToastItem[]; dismiss: (id: 
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 80 }}
               transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              className={clsx("rounded-2xl border p-4 shadow-luxury", styles[item.type])}
+              className={clsx("rounded-2xl border p-4 shadow-sm", styles[item.type])}
             >
               <div className="flex gap-3">
                 <Icon className="mt-0.5 h-5 w-5 shrink-0" />

@@ -1,5 +1,6 @@
 import { Abi } from 'viem'
 
+export const CUSD_MAINNET_ADDRESS = '0x765DE816845861e75A25Fca122bb6898b0732da0' as const
 export const CUSD_ALFAJORES_ADDRESS = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1' as const
 
 export const ERC20_ABI = [

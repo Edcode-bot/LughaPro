@@ -27,7 +27,7 @@ function toCardTutor(tutor: TutorWithProfile): Tutor {
     rating: Number(tutor.rating ?? 0),
     price: Number(tutor.hourly_rate ?? 0),
     languages: tutor.languages ?? ["Kiswahili"],
-    payments: [tutor.accepts_cusd ? "cUSD" : null, tutor.accepts_celo ? "CELO" : null, tutor.accepts_fiat ? "Fiat" : null].filter(Boolean) as Tutor["payments"],
+    payments: [tutor.accepts_cusd ? "cUSD" : null, tutor.accepts_celo ? "CELO" : null, tutor.accepts_fiat ? "Card" : null].filter(Boolean) as Tutor["payments"],
     online: Boolean(tutor.is_online),
     bio: tutor.bio ?? tutor.specialty ?? "Premium Kiswahili tutor.",
     image: tutor.profile.avatar_url ?? undefined,

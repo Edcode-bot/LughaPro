@@ -12,7 +12,7 @@ type AvatarProps = {
 const sizes = {
   sm: "h-10 w-10 text-xs",
   md: "h-12 w-12 text-sm",
-  lg: "h-16 w-16 text-lg",
+  lg: "h-20 w-20 text-xl",
   xl: "h-24 w-24 text-2xl",
 };
 
@@ -56,7 +56,7 @@ export function Avatar({ src, name, size = "md", online = false, className }: Av
       {online ? (
         <span
           className={clsx(
-            "absolute bottom-0 right-0 rounded-full border-2 border-white bg-mint",
+            "absolute bottom-0 right-0 rounded-full border-2 border-white bg-jade",
             dotSizes[size],
           )}
         />
@@ -64,4 +64,3 @@ export function Avatar({ src, name, size = "md", online = false, className }: Av
     </div>
   );
 }
-

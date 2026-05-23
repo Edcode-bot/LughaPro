@@ -8,7 +8,7 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const tones: Record<BadgeTone, string> = {
-  online: "bg-mint/15 text-jade ring-mint/30",
+  online: "bg-jade/15 text-jade ring-jade/30",
   cusd: "bg-gold/15 text-forest ring-gold/30",
   celo: "bg-forest text-cream ring-forest/20",
   top: "bg-jade/10 text-jade ring-jade/25",
@@ -30,4 +30,3 @@ export function Badge({ className, tone = "default", children, ...props }: Badge
     </span>
   );
 }
-

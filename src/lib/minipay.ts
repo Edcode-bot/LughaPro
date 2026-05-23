@@ -1,6 +1,6 @@
 import { createPublicClient, formatEther, http, type Address, type EIP1193Provider } from "viem";
-import { celo, celoAlfajores } from "viem/chains";
-import { CUSD_ALFAJORES_ADDRESS, ERC20_ABI } from "@/lib/contracts";
+import { celo } from "viem/chains";
+import { CUSD_MAINNET_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 
 type MiniPayEthereumProvider = EIP1193Provider & {
   isMiniPay?: boolean;
@@ -8,7 +8,7 @@ type MiniPayEthereumProvider = EIP1193Provider & {
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: MiniPayEthereumProvider;
   }
 }
 
@@ -16,8 +16,8 @@ export const CELO_MAINNET_CHAIN_ID = 42220;
 export const CELO_ALFAJORES_CHAIN_ID = 44787;
 
 const publicClient = createPublicClient({
-  chain: celoAlfajores,
-  transport: http("https://alfajores-forno.celo-testnet.org"),
+  chain: celo,
+  transport: http("https://forno.celo.org"),
 });
 
 export function isMiniPay(): boolean {
@@ -36,23 +36,22 @@ export async function getMiniPayAddress(): Promise<string> {
   return accounts[0];
 }
 
-export async function switchToCeloNetwork(chainId: number = CELO_ALFAJORES_CHAIN_ID) {
+export async function switchToCeloNetwork(chainId: number = CELO_MAINNET_CHAIN_ID) {
   const provider = typeof window !== "undefined" ? window.ethereum : undefined;
   if (!provider) throw new Error("Wallet provider is not available");
-  const target = chainId === CELO_MAINNET_CHAIN_ID ? celo : celoAlfajores;
   try {
-    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${target.id.toString(16)}` }] });
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${celo.id.toString(16)}` }] });
   } catch (error) {
     const code = typeof error === "object" && error !== null && "code" in error ? Number(error.code) : undefined;
     if (code === 4902) {
       await provider.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: `0x${target.id.toString(16)}`,
-          chainName: target.name,
-          nativeCurrency: target.nativeCurrency,
-          rpcUrls: target.id === CELO_MAINNET_CHAIN_ID ? ["https://forno.celo.org"] : ["https://alfajores-forno.celo-testnet.org"],
-          blockExplorerUrls: target.id === CELO_MAINNET_CHAIN_ID ? ["https://celoscan.io"] : ["https://alfajores.celoscan.io"],
+          chainId: `0x${celo.id.toString(16)}`,
+          chainName: celo.name,
+          nativeCurrency: celo.nativeCurrency,
+          rpcUrls: ["https://forno.celo.org"],
+          blockExplorerUrls: ["https://celoscan.io"],
         }],
       });
       return;
@@ -75,7 +74,7 @@ export function shortenAddress(address: string): string {
 
 export async function getCUSDBalance(address: string): Promise<bigint> {
   return publicClient.readContract({
-    address: CUSD_ALFAJORES_ADDRESS,
+    address: CUSD_MAINNET_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: [address as Address],

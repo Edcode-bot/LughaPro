@@ -45,7 +45,7 @@ export function getBookingStatusColor(status: BookingStatus): string {
   const colors: Record<BookingStatus, string> = {
     pending: 'bg-gold/15 text-forest border-gold/30',
     paid: 'bg-jade/10 text-jade border-jade/20',
-    active: 'bg-mint/15 text-jade border-mint/30',
+    active: 'bg-jade/15 text-jade border-jade/30',
     completed: 'bg-forest text-cream border-forest',
     cancelled: 'bg-red-50 text-red-700 border-red-200',
     disputed: 'bg-orange-50 text-orange-700 border-orange-200',

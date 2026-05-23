@@ -14,7 +14,7 @@ const iconMap = {
 export function NotificationToast({ notification, onDismiss }: { notification: Notification; onDismiss: () => void }) {
   const Icon = iconMap[(notification.type ?? "info") as keyof typeof iconMap] ?? Bell;
   return (
-    <motion.div initial={{ opacity: 0, x: 80 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 80 }} className="rounded-2xl border border-forest/10 bg-white p-4 shadow-luxury">
+    <motion.div initial={{ opacity: 0, x: 80 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 80 }} className="rounded-2xl border border-forest/10 bg-white p-4 shadow-sm">
       <div className="flex gap-3">
         <Icon className="mt-1 h-5 w-5 text-gold" />
         <div className="flex-1">
