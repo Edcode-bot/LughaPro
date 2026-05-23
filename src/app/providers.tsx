@@ -1,41 +1,18 @@
-'use client'
+﻿'use client'
 
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
-import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { config } from '@/lib/web3'
-import '@rainbow-me/rainbowkit/styles.css'
-import { useEffect, useState } from 'react'
-import { useConnect } from 'wagmi'
-import { isMiniPay } from '@/lib/minipay'
+import { useState } from 'react'
+import { WagmiProvider } from 'wagmi'
 import { ToastProvider } from '@/components/ui/Toast'
+import { config } from '@/lib/web3'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient())
-
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <RainbowKitProvider>
-            <MiniPayAutoConnect />
-            {children}
-          </RainbowKitProvider>
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
 }
-
-function MiniPayAutoConnect() {
-  const { connect, connectors } = useConnect()
-
-  useEffect(() => {
-    if (!isMiniPay()) return
-    const miniPay = connectors.find((connector) => connector.id === 'injected' || connector.name === 'MiniPay')
-    if (miniPay) connect({ connector: miniPay })
-  }, [connect, connectors])
-
-  return null
-}
-

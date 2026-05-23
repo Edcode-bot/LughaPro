@@ -1,6 +1,11 @@
 import { getAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
+type ReferralStat = {
+  status?: string | null
+  reward_amount?: number | string | null
+}
+
 export async function GET() {
   const auth = await getAuthenticatedProfile()
   if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
@@ -10,7 +15,7 @@ export async function GET() {
 
   if (error) return jsonError('Unable to load referral stats', 500)
 
-  const referrals = data ?? []
+  const referrals = (data ?? []) as ReferralStat[]
   const pending = referrals.filter((item) => item.status === 'pending').length
   const rewarded = referrals.filter((item) => item.status === 'rewarded').length
   const totalEarned = referrals

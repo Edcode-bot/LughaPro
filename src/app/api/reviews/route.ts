@@ -2,6 +2,10 @@ import { getAuthenticatedProfile, jsonError, jsonOk, parseJson } from '@/lib/api
 import { reviewCreateSchema } from '@/lib/schemas'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
+type ReviewRating = {
+  rating?: number | string | null
+}
+
 export async function POST(request: Request) {
   const auth = await getAuthenticatedProfile()
   if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
   if (error || !review) return jsonError('Unable to create review', 500)
 
   const { data: reviews } = await supabase.from('reviews').select('rating').eq('tutor_id', tutor_id)
-  const ratings = reviews ?? []
+  const ratings = (reviews ?? []) as ReviewRating[]
   const average = ratings.length ? ratings.reduce((sum, item) => sum + Number(item.rating), 0) / ratings.length : rating
 
   await supabase

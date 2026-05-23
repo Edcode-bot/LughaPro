@@ -22,9 +22,10 @@ export type Tutor = {
 
 type TutorCardProps = {
   tutor: Tutor;
+  href?: string;
 };
 
-export function TutorCard({ tutor }: TutorCardProps) {
+export function TutorCard({ tutor, href }: TutorCardProps) {
   return (
     <Card className="flex h-full flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
@@ -60,7 +61,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
           <span className="text-2xl font-black text-forest">${tutor.price}</span>
           <span className="text-sm text-forest/60">/hr</span>
         </div>
-        <Link href={`/tutor/${tutor.id}`}>
+        <Link href={href ?? `/tutor/${tutor.id}`}>
           <Button>Book Now</Button>
         </Link>
       </div>

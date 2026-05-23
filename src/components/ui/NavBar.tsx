@@ -1,38 +1,25 @@
-"use client";
+﻿"use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import clsx from "clsx";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useState } from "react";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 const links = [
   { label: "Find Tutors", href: "/search" },
   { label: "How it Works", href: "/#how-it-works" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "Become a Tutor", href: "/auth/register?role=tutor" },
+  { label: "Become a Tutor", href: "/#connect" },
 ];
 
 export function NavBar() {
   const [open, setOpen] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
-  const { isConnected } = useAccount();
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/auth/me")
-      .then((response) => {
-        if (active) setHasSession(response.ok);
-      })
-      .catch(() => {
-        if (active) setHasSession(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [walletOpen, setWalletOpen] = useState(false);
+  const { isConnected, displayName, disconnect } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b border-forest/10 bg-off-white/85 backdrop-blur-xl">
@@ -46,16 +33,19 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
-          {hasSession || isConnected ? <Link href="/dashboard" className="text-sm font-semibold text-forest/75 transition hover:text-jade">Dashboard</Link> : null}
+          {isConnected ? <Link href="/dashboard" className="text-sm font-semibold text-forest/75 transition hover:text-jade">Dashboard</Link> : null}
         </div>
-        <div className="hidden md:block">
-          <ConnectButton />
+        <div className="hidden items-center gap-3 md:flex">
+          {isConnected ? (
+            <>
+              <span className="rounded-full bg-cream px-4 py-2 text-sm font-bold text-forest">{displayName}</span>
+              <Button size="sm" variant="secondary" onClick={() => disconnect()}>Disconnect</Button>
+            </>
+          ) : (
+            <Button size="sm" onClick={() => setWalletOpen(true)}>Connect Wallet</Button>
+          )}
         </div>
-        <button
-          aria-label="Toggle menu"
-          className="rounded-full border border-forest/10 p-2 text-forest md:hidden"
-          onClick={() => setOpen((value) => !value)}
-        >
+        <button aria-label="Toggle menu" className="rounded-full border border-forest/10 p-2 text-forest md:hidden" onClick={() => setOpen((value) => !value)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </nav>
@@ -66,11 +56,11 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
-          {hasSession || isConnected ? <Link href="/dashboard" className="font-semibold text-forest" onClick={() => setOpen(false)}>Dashboard</Link> : null}
-          <ConnectButton />
+          {isConnected ? <Link href="/dashboard" className="font-semibold text-forest" onClick={() => setOpen(false)}>Dashboard</Link> : null}
+          {isConnected ? <Button size="sm" variant="secondary" onClick={() => disconnect()}>Disconnect {displayName}</Button> : <Button size="sm" onClick={() => setWalletOpen(true)}>Connect Wallet</Button>}
         </div>
       </div>
+      <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
     </header>
   );
 }
-

@@ -1,11 +1,11 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Copy, ExternalLink, QrCode, Send, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { CELO_ALFAJORES_CHAIN_ID, CELO_MAINNET_CHAIN_ID, formatCELOAmount, formatCUSDAmount, getCELOBalance, getCUSDBalance, shortenAddress } from "@/lib/minipay";
@@ -17,6 +17,7 @@ export function WalletWidget() {
   const [cusd, setCusd] = useState<bigint | null>(null);
   const [celo, setCelo] = useState<bigint | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!address) return;
@@ -37,7 +38,8 @@ export function WalletWidget() {
         <Wallet className="mx-auto h-10 w-10 text-gold" />
         <h3 className="mt-4 font-serif text-2xl font-black text-forest">Connect your wallet</h3>
         <p className="mt-2 text-forest/65">Connect your wallet to enable crypto payments.</p>
-        <div className="mt-6 flex justify-center"><ConnectButton /></div>
+        <div className="mt-6 flex justify-center"><Button onClick={() => setWalletOpen(true)}>Connect Wallet</Button></div>
+        <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
       </div>
     );
   }

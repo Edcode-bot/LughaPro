@@ -1,6 +1,17 @@
 import { getAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
+type DashboardBooking = {
+  id: string
+  status?: string | null
+  duration_minutes?: number | null
+  amount?: number | string | null
+  student_id?: string | null
+  scheduled_at: string
+  created_at: string
+  updated_at?: string | null
+}
+
 export async function GET() {
   const auth = await getAuthenticatedProfile()
   if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
@@ -22,7 +33,7 @@ export async function GET() {
   const { data: bookings, error } = await bookingQuery
   if (error) return jsonError('Unable to load dashboard stats', 500)
 
-  const allBookings = bookings ?? []
+  const allBookings = (bookings ?? []) as DashboardBooking[]
   const completed = allBookings.filter((booking) => booking.status === 'completed')
   const totalSessions = completed.length
   const hoursLearned = completed.reduce((sum, booking) => sum + Number(booking.duration_minutes ?? 0) / 60, 0)

@@ -55,6 +55,7 @@ export function HomeClient() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [tutors, setTutors] = useState<Tutor[]>([]);
+  const [showingFallback, setShowingFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [miniPay] = useState(() => isMiniPay());
@@ -71,9 +72,15 @@ export function HomeClient() {
           return;
         }
         const items = (result.data?.items ?? []).map(toCardTutor);
+        setShowingFallback(items.length === 0);
         setTutors(items.length > 0 ? items : fallbackTutors);
       })
-      .catch(() => active && setError("Could not load tutors. Try refreshing."))
+      .catch(() => {
+        if (!active) return;
+        setShowingFallback(true);
+        setTutors(fallbackTutors);
+        setError("Could not load live tutors. Showing sample tutors.");
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -106,7 +113,7 @@ export function HomeClient() {
         </section>
       </FadeIn>
       <section className="bg-cream py-8"><div className="mx-auto grid max-w-5xl gap-4 px-5 text-center md:grid-cols-3">{stats.map((stat) => <div key={stat} className="text-2xl font-black text-jade">{stat}</div>)}</div></section>
-      <section id="tutors" className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="font-bold uppercase tracking-[0.25em] text-gold">Marketplace</p><h2 className="mt-3 font-serif text-4xl font-black text-forest md:text-5xl">Featured Tutors</h2>{miniPay ? <p className="mt-3 inline-flex rounded-full bg-gold px-4 py-2 text-sm font-black text-forest">Pay with MiniPay</p> : null}</div><form onSubmit={submitSearch} className="relative w-full md:max-w-md"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-forest/45" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-13 w-full rounded-full border border-forest/10 bg-white pl-12 pr-5 text-forest outline-none ring-gold/30 transition focus:ring-4" placeholder="Search by name, specialty, price..." /></form></div><div className="mt-8 flex gap-3 overflow-x-auto pb-2 md:flex-wrap">{filters.map((item) => <button key={item.label} onClick={() => selectFilter(item.value)} className="shrink-0 py-2"><Badge>{item.label}</Badge></button>)}</div>{error ? <div className="mt-8 rounded-3xl bg-white p-8 text-center text-forest shadow-sm"><p className="font-bold text-red-700">{error}</p></div> : null}<div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{loading ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />) : tutors.map((tutor) => <TutorCard key={tutor.id} tutor={tutor} />)}</div></section>
+      <section id="tutors" className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="font-bold uppercase tracking-[0.25em] text-gold">Marketplace</p><h2 className="mt-3 font-serif text-4xl font-black text-forest md:text-5xl">Featured Tutors</h2>{miniPay ? <p className="mt-3 inline-flex rounded-full bg-gold px-4 py-2 text-sm font-black text-forest">Pay with MiniPay</p> : null}</div><form onSubmit={submitSearch} className="relative w-full md:max-w-md"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-forest/45" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-13 w-full rounded-full border border-forest/10 bg-white pl-12 pr-5 text-forest outline-none ring-gold/30 transition focus:ring-4" placeholder="Search by name, specialty, price..." /></form></div><div className="mt-8 flex gap-3 overflow-x-auto pb-2 md:flex-wrap">{filters.map((item) => <button key={item.label} onClick={() => selectFilter(item.value)} className="shrink-0 py-2"><Badge>{item.label}</Badge></button>)}</div>{showingFallback ? <div className="mt-8 rounded-3xl bg-gold/20 p-5 text-center font-bold text-forest">Showing sample tutors — be the first to join!</div> : null}{error ? <div className="mt-8 rounded-3xl bg-white p-8 text-center text-forest shadow-sm"><p className="font-bold text-red-700">{error}</p></div> : null}<div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{loading ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />) : tutors.map((tutor) => <TutorCard key={tutor.id} tutor={tutor} href={showingFallback ? "/search" : undefined} />)}</div></section>
       {!miniPay ? <div className="fixed inset-x-4 bottom-4 z-50 rounded-full bg-forest p-3 text-center text-sm font-black text-cream shadow-luxury md:hidden">Connect MiniPay to start learning</div> : null}
       <section id="how-it-works" className="bg-forest py-20 text-cream"><div className="mx-auto max-w-7xl px-5 lg:px-8"><h2 className="text-center font-serif text-4xl font-black md:text-5xl">How it Works</h2><div className="relative mt-12 grid gap-6 md:grid-cols-3"><div className="absolute left-1/4 right-1/4 top-12 hidden h-px bg-gold/40 md:block" />{[[Search, "Find Your Tutor", "Filter by style, budget, ratings, and payment method."], [CreditCard, "Book & Pay", "Use cUSD, CELO, or card with transparent pricing."], [BookOpen, "Start Learning", "Join your session and track fluency progress."]].map(([Icon, title, text]) => <Card key={String(title)} className="relative bg-cream text-forest"><Icon className="h-10 w-10 text-gold" /><h3 className="mt-5 text-xl font-black">{title as string}</h3><p className="mt-3 text-forest/70">{text as string}</p></Card>)}</div></div></section>
       <section id="pricing" className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><h2 className="text-center font-serif text-4xl font-black text-forest md:text-5xl">Pricing Plans</h2><div className="mt-12 grid gap-6 md:grid-cols-3">{plans.map((plan, index) => <Card key={plan.name} cream={index === 1} className={index === 1 ? "border-gold ring-4 ring-gold/20" : ""}>{index === 1 ? <Badge tone="top">Most Popular</Badge> : null}<h3 className="mt-5 text-2xl font-black text-forest">{plan.name}</h3><p className="mt-4 font-serif text-5xl font-black text-jade">{plan.price}</p><div className="mt-6 grid gap-3">{plan.perks.map((perk) => <p key={perk} className="flex items-center gap-2 text-forest/75"><ShieldCheck className="h-4 w-4 text-mint" />{perk}</p>)}</div><p className="mt-6 rounded-2xl bg-gold/15 p-3 text-sm font-bold text-forest">Pay with cUSD and save 10%</p></Card>)}</div></section>

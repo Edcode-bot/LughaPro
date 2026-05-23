@@ -1,54 +1,43 @@
-import { verifyMessage } from 'viem'
-import { jsonError, jsonOk, parseJson } from '@/lib/api'
-import { walletLoginSchema } from '@/lib/schemas'
+﻿import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
-  const parsed = await parseJson(request, walletLoginSchema)
-  if (parsed.error || !parsed.data) return jsonError(parsed.error ?? 'Invalid wallet login data', 422)
+  try {
+    const body = await request.json() as { wallet_address?: string; role?: 'student' | 'tutor' }
+    const walletAddress = body.wallet_address?.toLowerCase()
+    const role = body.role === 'tutor' ? 'tutor' : 'student'
 
-  const { wallet_address, signature, message } = parsed.data
+    if (!walletAddress) {
+      return NextResponse.json({ error: 'wallet_address is required' }, { status: 422 })
+    }
 
-  const valid = await verifyMessage({ address: wallet_address as `0x${string}`, message, signature: signature as `0x${string}` })
-  if (!valid) return jsonError('Invalid wallet signature', 401)
+    const { data: existingProfile, error: lookupError } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('wallet_address', walletAddress)
+      .maybeSingle()
 
-  const normalizedWallet = wallet_address.toLowerCase()
-  const { data: existingProfile } = await supabaseAdmin
-    .from('profiles')
-    .select('*')
-    .eq('wallet_address', normalizedWallet)
-    .maybeSingle()
+    if (lookupError) throw lookupError
+    if (existingProfile) {
+      return NextResponse.json({ profile: existingProfile, isNew: false })
+    }
 
-  if (existingProfile) {
-    return jsonOk({ session: null, profile: existingProfile }, 'Wallet verified')
+    const id = crypto.randomUUID()
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id,
+        full_name: `Wallet ${walletAddress.slice(0, 6)}`,
+        role,
+        wallet_address: walletAddress,
+      })
+      .select('*')
+      .single()
+
+    if (profileError) throw profileError
+    return NextResponse.json({ profile, isNew: true }, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Wallet login failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const generatedEmail = `${normalizedWallet.slice(2)}@wallet.lughapro.local`
-  const generatedPassword = crypto.randomUUID() + crypto.randomUUID()
-
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: generatedEmail,
-    password: generatedPassword,
-    email_confirm: true,
-    user_metadata: { wallet_address: normalizedWallet, role: 'student' },
-  })
-
-  if (authError || !authData.user) return jsonError('Unable to create wallet account', 400)
-
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .insert({
-      id: authData.user.id,
-      email: generatedEmail,
-      full_name: `Wallet ${normalizedWallet.slice(0, 6)}`,
-      role: 'student',
-      wallet_address: normalizedWallet,
-    })
-    .select('*')
-    .single()
-
-  if (profileError || !profile) return jsonError('Unable to create wallet profile', 400)
-
-  return jsonOk({ session: null, profile }, 'Wallet account created', 201)
 }
-

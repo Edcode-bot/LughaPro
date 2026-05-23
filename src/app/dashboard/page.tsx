@@ -1,6 +1,6 @@
-import { DashboardClient } from '@/components/DashboardClient'
+﻿import { DashboardClient } from '@/components/DashboardClient'
+import { AuthGuard } from '@/components/AuthGuard'
 
 export default function Dashboard() {
-  return <DashboardClient />
+  return <AuthGuard><DashboardClient /></AuthGuard>
 }
-
