@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       payment_method,
       notes,
       amount,
-      status: 'pending',
+      status: payment_method === 'fiat' ? 'pending_fiat' : 'pending',
     })
     .select('*')
     .single()

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const roleSchema = z.enum(['student', 'tutor', 'admin'])
 export const paymentMethodSchema = z.enum(['cusd', 'celo', 'fiat'])
-export const bookingStatusSchema = z.enum(['pending', 'paid', 'active', 'completed', 'cancelled', 'disputed'])
+export const bookingStatusSchema = z.enum(['pending', 'pending_fiat', 'paid', 'active', 'completed', 'cancelled', 'disputed'])
 
 export const registerSchema = z.object({
   email: z.string().email(),

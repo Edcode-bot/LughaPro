@@ -1,6 +1,7 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -39,9 +40,9 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-forest via-jade to-forest px-5 py-12">
-      <Card className="w-full max-w-md bg-cream">
-        <Link href="/" className="font-serif text-3xl font-black text-forest">
-          Lugha<span className="text-gold">Pro</span>
+      <Card className="w-full max-w-md bg-white shadow-luxury">
+        <Link href="/" className="inline-flex items-center">
+          <Image src="/logo.png" alt="LughaPro" width={120} height={36} className="h-10 w-auto" priority />
         </Link>
         <h1 className="mt-8 font-serif text-4xl font-black text-forest">Welcome back</h1>
         <p className="mt-2 text-forest/65">Log in to continue your Kiswahili learning journey.</p>
