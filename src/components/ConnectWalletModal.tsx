@@ -5,7 +5,10 @@ import { X } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/hooks/useAuth'
+import { saveStoredProfile } from '@/lib/profile-storage'
+import { Profile } from '@/types'
 
 type Step = 'connect' | 'role'
 type WalletLoginResponse = {
@@ -44,7 +47,8 @@ const walletOptions = [
 
 export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter()
-  const { address, isConnected, isLoading, connectMetaMask, connectWalletConnect, connectBrowserWallet } = useAuth()
+  const { address, isConnected, isLoading, connectMetaMask, connectWalletConnect, connectBrowserWallet, setProfile } = useAuth()
+  const { toast } = useToast()
   const [step, setStep] = useState<Step>('connect')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,12 +83,21 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
         body: JSON.stringify({ wallet_address: address, role: selectedRole }),
       })
       const result = (await response.json()) as WalletLoginResponse
-      const profile = result.data?.profile ?? result.profile
+      const profile = (result.data?.profile ?? result.profile) as Profile | undefined
       if (!response.ok && !profile) {
         throw new Error(result.error ?? 'Unable to create wallet profile')
       }
+      if (profile && address) {
+        saveStoredProfile(address, profile)
+        setProfile(profile)
+      }
+      toast({
+        title: 'Welcome to LughaPro! 🎉',
+        description: 'Start by browsing our content library.',
+        type: 'success',
+      })
       onClose()
-      router.push('/dashboard')
+      router.push('/learn')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to connect wallet')
     } finally {
@@ -168,7 +181,7 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                   >
                     <span className="text-3xl">📚</span>
                     <h3 className="mt-3 font-serif text-xl font-bold text-forest">I want to Learn</h3>
-                    <p className="mt-2 text-sm text-foreground/65">Find tutors and book Kiswahili lessons.</p>
+                    <p className="mt-2 text-sm text-foreground/65">Browse books, posts, and lessons from top creators.</p>
                   </button>
                   <button
                     type="button"
@@ -180,7 +193,7 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                   >
                     <span className="text-3xl">🎓</span>
                     <h3 className="mt-3 font-serif text-xl font-bold text-forest">I want to Teach</h3>
-                    <p className="mt-2 text-sm text-foreground/65">Create a tutor profile and teach learners.</p>
+                    <p className="mt-2 text-sm text-foreground/65">Publish content and earn from your expertise.</p>
                   </button>
                 </div>
                 <button

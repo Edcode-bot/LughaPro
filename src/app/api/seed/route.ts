@@ -1,43 +1,65 @@
 ﻿import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const TUTORS = [
-  { id: crypto.randomUUID(), full_name: 'Amina Nyerere', country: 'Tanzania', bio: 'Native Kiswahili speaker with 5 years teaching experience', hourly_rate: 15, rating: 4.9, accepts_cusd: true, accepts_fiat: true, languages: ['Kiswahili'], specialty: 'Conversational' },
-  { id: crypto.randomUUID(), full_name: 'Baraka Omondi', country: 'Kenya', bio: 'Certified language instructor specializing in conversational Kiswahili', hourly_rate: 12, rating: 4.8, accepts_cusd: true, accepts_fiat: true, languages: ['Kiswahili', 'English'], specialty: 'Beginner-friendly' },
-  { id: crypto.randomUUID(), full_name: 'Zawadi Kimani', country: 'Kenya', bio: 'Academic Kiswahili tutor with university-level teaching experience', hourly_rate: 18, rating: 4.7, accepts_cusd: false, accepts_fiat: true, languages: ['Kiswahili'], specialty: 'Academic' },
-  { id: crypto.randomUUID(), full_name: 'Jabari Mwangi', country: 'Uganda', bio: 'East African language expert, helps learners reach fluency fast', hourly_rate: 20, rating: 4.9, accepts_cusd: true, accepts_fiat: true, languages: ['Kiswahili', 'Luganda'], specialty: 'Fluency' },
-  { id: crypto.randomUUID(), full_name: 'Fatuma Hassan', country: 'Tanzania', bio: 'Zanzibar-born native speaker. Coastal dialect specialist', hourly_rate: 22, rating: 5.0, accepts_cusd: true, accepts_fiat: true, languages: ['Kiswahili'], specialty: 'Coastal dialect' },
-  { id: crypto.randomUUID(), full_name: 'Tendai Mutasa', country: 'Kenya', bio: 'Young dynamic tutor focused on modern spoken Kiswahili', hourly_rate: 10, rating: 4.6, accepts_cusd: false, accepts_fiat: true, languages: ['Kiswahili', 'Sheng'], specialty: 'Modern Kiswahili' },
-]
-
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('x-seed-secret')
-  if (authHeader !== process.env.SEED_SECRET && process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (process.env.NODE_ENV !== 'development') {
+    const secret = request.headers.get('x-seed-secret')
+    if (secret !== process.env.SEED_SECRET) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: 'Supabase seed credentials are missing' }, { status: 500 })
-  }
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey)
+  const tutors = [
+    { id: '11111111-1111-1111-1111-111111111111', full_name: 'Amina Kariuki', role: 'tutor', country: 'Kenya', bio: 'Senior Kiswahili instructor with 10+ years experience. Former lecturer at University of Nairobi.', languages: ['Kiswahili', 'English'], wallet_address: '0x0000000000000000000000000000000000000001' },
+    { id: '22222222-2222-2222-2222-222222222222', full_name: 'Juma Mwanga', role: 'tutor', country: 'Tanzania', bio: 'Patient and encouraging. Perfect for beginners. Conversational approach from day one.', languages: ['Kiswahili'], wallet_address: '0x0000000000000000000000000000000000000002' },
+    { id: '33333333-3333-3333-3333-333333333333', full_name: 'Fatuma Abdi', role: 'tutor', country: 'Kenya', bio: 'Blends language with East African culture, proverbs, and history.', languages: ['Kiswahili', 'English'], wallet_address: '0x0000000000000000000000000000000000000003' },
+    { id: '44444444-4444-4444-4444-444444444444', full_name: 'Kwame Osei', role: 'tutor', country: 'Uganda', bio: 'PhD candidate in African linguistics. Specialises in formal and academic Kiswahili.', languages: ['Kiswahili', 'Luganda', 'English'], wallet_address: '0x0000000000000000000000000000000000000004' },
+    { id: '55555555-5555-5555-5555-555555555555', full_name: 'Zara Hassan', role: 'tutor', country: 'Tanzania', bio: 'Native Zanzibar dialect speaker — pure coastal Kiswahili.', languages: ['Kiswahili'], wallet_address: '0x0000000000000000000000000000000000000005' },
+    { id: '66666666-6666-6666-6666-666666666666', full_name: 'Daniel Kimani', role: 'tutor', country: 'Kenya', bio: 'Specialises in tourism and hospitality Kiswahili.', languages: ['Kiswahili', 'English'], wallet_address: '0x0000000000000000000000000000000000000006' },
+  ]
+
+  const tutorDetails = [
+    { id: '11111111-1111-1111-1111-111111111111', profile_id: '11111111-1111-1111-1111-111111111111', hourly_rate: 28, rating: 4.98, total_reviews: 214, review_count: 214, accepts_cusd: true, accepts_fiat: true, specialty: 'Business Kiswahili', is_verified: true, is_featured: true, is_online: true, location: 'Nairobi, Kenya' },
+    { id: '22222222-2222-2222-2222-222222222222', profile_id: '22222222-2222-2222-2222-222222222222', hourly_rate: 18, rating: 4.95, total_reviews: 187, review_count: 187, accepts_cusd: true, accepts_fiat: true, specialty: 'Beginners', is_verified: true, is_featured: true, is_online: true, location: 'Dar es Salaam, Tanzania' },
+    { id: '33333333-3333-3333-3333-333333333333', profile_id: '33333333-3333-3333-3333-333333333333', hourly_rate: 22, rating: 4.92, total_reviews: 156, review_count: 156, accepts_cusd: true, accepts_fiat: true, specialty: 'Cultural Context', is_verified: true, is_featured: false, is_online: false, location: 'Mombasa, Kenya' },
+    { id: '44444444-4444-4444-4444-444444444444', profile_id: '44444444-4444-4444-4444-444444444444', hourly_rate: 25, rating: 4.89, total_reviews: 98, review_count: 98, accepts_cusd: false, accepts_fiat: true, specialty: 'Academic', is_verified: true, is_featured: false, is_online: true, location: 'Kampala, Uganda' },
+    { id: '55555555-5555-5555-5555-555555555555', profile_id: '55555555-5555-5555-5555-555555555555', hourly_rate: 32, rating: 5.0, total_reviews: 73, review_count: 73, accepts_cusd: true, accepts_fiat: false, specialty: 'Coastal Dialect', is_verified: true, is_featured: true, is_online: true, location: 'Zanzibar, Tanzania' },
+    { id: '66666666-6666-6666-6666-666666666666', profile_id: '66666666-6666-6666-6666-666666666666', hourly_rate: 20, rating: 4.94, total_reviews: 142, review_count: 142, accepts_cusd: true, accepts_fiat: true, specialty: 'Tourism', is_verified: true, is_featured: false, is_online: false, location: 'Nairobi, Kenya' },
+  ]
+
+  const books = [
+    { id: 'b1111111-1111-1111-1111-111111111111', author_id: '11111111-1111-1111-1111-111111111111', title: 'Business Kiswahili Essentials', description: 'Professional vocabulary for meetings, emails, and negotiations.', level: 'B2', price: 12, content_type: 'book', language: 'Kiswahili', tags: ['business'] },
+    { id: 'b2222222-2222-2222-2222-222222222222', author_id: '22222222-2222-2222-2222-222222222222', title: 'Kiswahili for Beginners', description: 'A gentle introduction with dialogues and pronunciation drills.', level: 'A1', price: 0, content_type: 'book', language: 'Kiswahili', tags: ['beginner'] },
+    { id: 'b3333333-3333-3333-3333-333333333333', author_id: '33333333-3333-3333-3333-333333333333', title: 'Proverbs & Culture', description: 'Methali, stories, and cultural context from across East Africa.', level: 'B1', price: 8, content_type: 'book', language: 'Bilingual', tags: ['culture'] },
+    { id: 'b4444444-4444-4444-4444-444444444444', author_id: '55555555-5555-5555-5555-555555555555', title: 'Coastal Dialect Masterclass', description: 'Video lessons on Zanzibar Kiswahili pronunciation and idioms.', level: 'C1', price: 15, content_type: 'lesson', language: 'Kiswahili', tags: ['dialect', 'video'] },
+  ]
+
+  const posts = [
+    { id: 'p1111111-1111-1111-1111-111111111111', author_id: '22222222-2222-2222-2222-222222222222', title: '5 Greetings Every Learner Should Know', content: 'Hujambo, Habari, Shikamoo, Habari za asubuhi, and Habari za jioni — with usage notes and audio tips.', is_premium: false, price: 0, language: 'Kiswahili', tags: ['greetings'] },
+    { id: 'p2222222-2222-2222-2222-222222222222', author_id: '44444444-4444-4444-4444-444444444444', title: 'Academic Writing in Kiswahili', content: 'Structure, connectors, and formal register for university essays and research papers.', is_premium: true, price: 3, language: 'Kiswahili', tags: ['academic'] },
+    { id: 'p3333333-3333-3333-3333-333333333333', author_id: '66666666-6666-6666-6666-666666666666', title: 'Safari Kiswahili Phrasebook', content: 'Essential phrases for guides, hospitality staff, and travellers across Kenya and Tanzania.', is_premium: false, price: 0, language: 'English', tags: ['tourism'] },
+  ]
 
   try {
-    for (const tutor of TUTORS) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ id: tutor.id, full_name: tutor.full_name, role: 'tutor', country: tutor.country, bio: tutor.bio, languages: tutor.languages }, { onConflict: 'id' })
-      if (profileError) throw profileError
-
-      const { error: tutorError } = await supabase
-        .from('tutors')
-        .upsert({ id: tutor.id, hourly_rate: tutor.hourly_rate, rating: tutor.rating, accepts_cusd: tutor.accepts_cusd, accepts_fiat: tutor.accepts_fiat, specialty: [tutor.specialty], is_verified: true, is_featured: true, is_online: true }, { onConflict: 'id' })
-      if (tutorError) throw tutorError
+    for (const tutor of tutors) {
+      await supabase.from('profiles').upsert(tutor, { onConflict: 'id' })
     }
-    return NextResponse.json({ seeded: true, count: TUTORS.length })
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    for (const detail of tutorDetails) {
+      await supabase.from('tutors').upsert(detail, { onConflict: 'id' })
+    }
+    for (const book of books) {
+      await supabase.from('books').upsert(book, { onConflict: 'id' })
+    }
+    for (const post of posts) {
+      await supabase.from('posts').upsert(post, { onConflict: 'id' })
+    }
+    return NextResponse.json({ seeded: true, count: tutors.length, books: books.length, posts: posts.length })
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }

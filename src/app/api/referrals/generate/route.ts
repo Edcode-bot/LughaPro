@@ -1,21 +1,31 @@
-import { generateReferralCode, getAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { generateReferralCode, getAuthenticatedProfile, getWalletAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
+import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
-  const auth = await getAuthenticatedProfile()
-  if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
+  const walletAuth = await getWalletAuthenticatedProfile(request)
+  const sessionAuth = walletAuth.profile ? null : await getAuthenticatedProfile()
+  const profile = walletAuth.profile ?? sessionAuth?.profile ?? null
 
-  const supabase = await createServerSupabaseClient()
-  let referralCode = auth.profile.referral_code
+  if (!profile) {
+    return jsonError(walletAuth.error ?? sessionAuth?.error ?? 'Authentication required', 401)
+  }
+
+  let referralCode = profile.referral_code
 
   if (!referralCode) {
-    referralCode = generateReferralCode(auth.profile.full_name || auth.userId)
-    const { error } = await supabase.from('profiles').update({ referral_code: referralCode }).eq('id', auth.userId)
+    referralCode = generateReferralCode(profile.full_name || profile.id)
+    const client = walletAuth.profile ? supabaseAdmin : await createServerSupabaseClient()
+    const { error } = await client.from('profiles').update({ referral_code: referralCode }).eq('id', profile.id)
     if (error) return jsonError('Unable to generate referral code', 500)
   }
 
   const origin = new URL(request.url).origin
 
-  return jsonOk({ referral_code: referralCode, referral_link: `${origin}/auth/register?ref=${referralCode}` }, 'Referral code ready')
+  return jsonOk({
+    referral_code: referralCode,
+    referral_link: `${origin}/?ref=${referralCode}`,
+    total_referred: 0,
+    total_earned: 0,
+  }, 'Referral code ready')
 }
 

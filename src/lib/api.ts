@@ -1,7 +1,33 @@
 import { NextResponse } from 'next/server'
 import { ZodError, ZodSchema } from 'zod'
 import { createServerSupabaseClient } from './supabase'
+import { supabaseAdmin } from './supabase'
 import { Profile } from '@/types'
+
+export function getWalletAddress(request: Request) {
+  return request.headers.get('wallet_address')?.toLowerCase() ?? null
+}
+
+export async function getProfileByWallet(walletAddress: string): Promise<
+  | { profile: Profile; error: null }
+  | { profile: null; error: string }
+> {
+  const { data: profile, error } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('wallet_address', walletAddress)
+    .maybeSingle()
+
+  if (error) return { profile: null, error: 'Unable to load profile' }
+  if (!profile) return { profile: null, error: 'Profile not found' }
+  return { profile: profile as Profile, error: null }
+}
+
+export async function getWalletAuthenticatedProfile(request: Request) {
+  const wallet = getWalletAddress(request)
+  if (!wallet) return { profile: null, error: 'wallet_address header is required' }
+  return getProfileByWallet(wallet)
+}
 
 export function jsonOk<T>(data: T, message = 'OK', status = 200) {
   return NextResponse.json({ data, error: null, message }, { status })

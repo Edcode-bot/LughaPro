@@ -1,395 +1,251 @@
 "use client";
 
-import { BookOpen, CreditCard, Search, UserCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { ContentCard } from "@/components/ui/ContentCard";
+import { CreatorCard } from "@/components/ui/CreatorCard";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { Tutor, TutorCard } from "@/components/ui/TutorCard";
-import { TutorWithProfile } from "@/types";
-
-const filters = [
-  { label: "All", value: "" },
-  { label: "Online Now", value: "online" },
-  { label: "cUSD Accepted", value: "cusd" },
-  { label: "Top Rated", value: "top_rated" },
-  { label: "Under $15/hr", value: "under_15" },
-];
+import { contentCoverEmoji, contentCoverStyle } from "@/lib/content";
+import { useAuth } from "@/hooks/useAuth";
+import { ContentItem, TutorWithProfile } from "@/types";
 
 const stats = [
-  { value: "500+", label: "Tutors" },
-  { value: "12,000+", label: "Students" },
-  { value: "4.9★", label: "Average Rating" },
+  { value: "500+", label: "Creators" },
+  { value: "2,000+", label: "Content Items" },
+  { value: "10,000+", label: "Learners" },
+  { value: "4.9★", label: "Rating" },
 ];
 
-const plans = [
-  {
-    name: "Starter",
-    price: "Free",
-    perks: ["Browse tutors", "Community lessons", "Wallet-ready profile"],
-    cta: "Get Started",
-    featured: false,
-  },
-  {
-    name: "Explorer",
-    price: "$19/mo",
-    perks: ["2 premium lessons", "Priority booking", "Progress tracking"],
-    cta: "Start Exploring",
-    featured: true,
-  },
-  {
-    name: "Pro",
-    price: "$49/mo",
-    perks: ["6 premium lessons", "Certificate paths", "Concierge matching"],
-    cta: "Go Pro",
-    featured: false,
-  },
-];
-
-const steps = [
-  {
-    number: "1",
-    icon: Search,
-    title: "Find Your Tutor",
-    text: "Filter by style, budget, ratings, and payment method.",
-  },
-  {
-    number: "2",
-    icon: CreditCard,
-    title: "Book & Pay",
-    text: "Reserve a session in minutes with transparent pricing.",
-  },
-  {
-    number: "3",
-    icon: BookOpen,
-    title: "Start Learning",
-    text: "Join live sessions and track your fluency progress.",
-  },
+const features = [
+  { icon: "📚", title: "Rich Content Library", text: "Books, lessons, and articles from verified creators across Africa." },
+  { icon: "💳", title: "Flexible Payments", text: "Pay with cUSD, CELO, or card — only for what you want to learn." },
+  { icon: "🏆", title: "NFT Certificates", text: "Earn blockchain certificates when you complete learning paths." },
+  { icon: "🌍", title: "African-First", text: "Content designed for African learners, by African creators." },
 ];
 
 const testimonials = [
-  {
-    name: "Grace Mwangi",
-    country: "Kenya",
-    quote: "LughaPro made it easy to find a tutor who understood my goals. Booking took minutes.",
-    initials: "GM",
-  },
-  {
-    name: "Samuel Okello",
-    country: "Uganda",
-    quote: "The tutors are professional and patient. My Kiswahili confidence has grown fast.",
-    initials: "SO",
-  },
-  {
-    name: "Asha Hassan",
-    country: "Tanzania",
-    quote: "Finally a platform built for African learners. Clean, simple, and trustworthy.",
-    initials: "AH",
-  },
+  { name: "Grace Mwangi", country: "🇰🇪 Kenya", quote: "LughaPro feels like a real edtech platform built for us. I bought two books and started immediately.", rating: 5 },
+  { name: "Samuel Okello", country: "🇺🇬 Uganda", quote: "The creator library is excellent. Clear pricing, beautiful content cards, and easy wallet sign-in.", rating: 5 },
+  { name: "Asha Hassan", country: "🇹🇿 Tanzania", quote: "Finally a Kiswahili marketplace that respects African learners and creators equally.", rating: 5 },
 ];
 
-type TutorsApi = { data: { items: TutorWithProfile[] } | null; error: string | null };
-
-const fallbackTutors: Tutor[] = [
-  { id: "1", name: "Amina Nyerere", location: "Dar es Salaam", rating: 4.9, price: 15, languages: ["Kiswahili"], online: true, payments: ["cUSD", "Card"], bio: "Native Kiswahili speaker with 5 years teaching experience", topTutor: true },
-  { id: "2", name: "Baraka Omondi", location: "Nairobi", rating: 4.8, price: 12, languages: ["Kiswahili", "English"], online: true, payments: ["cUSD", "CELO", "Card"], bio: "Certified language instructor specializing in conversational Kiswahili", topTutor: true },
-  { id: "3", name: "Zawadi Kimani", location: "Mombasa", rating: 4.7, price: 18, languages: ["Kiswahili"], online: false, payments: ["Card"], bio: "Academic Kiswahili tutor with university-level teaching experience", topTutor: true },
-  { id: "4", name: "Jabari Mwangi", location: "Kampala", rating: 4.9, price: 20, languages: ["Kiswahili", "Luganda"], online: true, payments: ["cUSD", "CELO", "Card"], bio: "East African language expert, helps learners reach fluency fast", topTutor: true },
-  { id: "5", name: "Fatuma Hassan", location: "Zanzibar", rating: 5.0, price: 22, languages: ["Kiswahili"], online: true, payments: ["cUSD", "Card"], bio: "Zanzibar-born native speaker. Coastal dialect specialist", topTutor: true },
-  { id: "6", name: "Tendai Mutasa", location: "Nairobi", rating: 4.6, price: 10, languages: ["Kiswahili", "Sheng"], online: false, payments: ["Card"], bio: "Young dynamic tutor focused on modern spoken Kiswahili" },
+const previewCards = [
+  { title: "Business Kiswahili", creator: "Amina K.", type: "book" as const },
+  { title: "Coastal Dialect", creator: "Zara H.", type: "lesson" as const },
 ];
-
-function toCardTutor(tutor: TutorWithProfile): Tutor {
-  return {
-    id: tutor.id,
-    name: tutor.profile.full_name,
-    location: tutor.location ?? "East Africa",
-    rating: Number(tutor.rating ?? 0),
-    price: Number(tutor.hourly_rate ?? 0),
-    languages: tutor.languages ?? ["Kiswahili"],
-    payments: [tutor.accepts_cusd ? "cUSD" : null, tutor.accepts_celo ? "CELO" : null, tutor.accepts_fiat ? "Card" : null].filter(Boolean) as Tutor["payments"],
-    online: Boolean(tutor.is_online),
-    bio: tutor.bio ?? tutor.specialty ?? "Premium Kiswahili tutor.",
-    image: tutor.profile.avatar_url ?? undefined,
-    topTutor: Number(tutor.rating ?? 0) >= 4.7,
-  };
-}
 
 export function HomeClient() {
   const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("");
-  const [tutors, setTutors] = useState<Tutor[]>([]);
-  const [showingFallback, setShowingFallback] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { isConnected } = useAuth();
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [creators, setCreators] = useState<TutorWithProfile[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true);
+  const [loadingCreators, setLoadingCreators] = useState(true);
+  const [walletOpen, setWalletOpen] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    fetch("/api/tutors?limit=6")
-      .then((response) => response.json() as Promise<TutorsApi>)
-      .then((result) => {
-        if (!active) return;
-        if (result.error) {
-          setError("Could not load tutors. Try refreshing.");
-          return;
-        }
-        const items = (result.data?.items ?? []).map(toCardTutor);
-        setShowingFallback(items.length === 0);
-        setTutors(items.length > 0 ? items : fallbackTutors);
-      })
-      .catch(() => {
-        if (!active) return;
-        setShowingFallback(true);
-        setTutors(fallbackTutors);
-        setError("Could not load live tutors. Showing sample tutors.");
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+    fetch("/api/content?limit=6")
+      .then((response) => response.json())
+      .then((result: { data?: { items: ContentItem[] } }) => setContent(result.data?.items ?? []))
+      .catch(() => setContent([]))
+      .finally(() => setLoadingContent(false));
+
+    fetch("/api/tutors?limit=4&filter=featured")
+      .then((response) => response.json())
+      .then((result: { data?: { items: TutorWithProfile[] } }) => setCreators(result.data?.items ?? []))
+      .catch(() => setCreators([]))
+      .finally(() => setLoadingCreators(false));
   }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const params = new URLSearchParams();
-    if (search.trim()) params.set("q", search.trim());
-    router.push(`/search${params.toString() ? `?${params.toString()}` : ""}`);
-  }
-
-  function selectFilter(value: string) {
-    setActiveFilter(value);
-    const params = new URLSearchParams();
-    if (value) params.set("filter", value);
-    router.push(`/search${params.toString() ? `?${params.toString()}` : ""}`);
+  function handleGetStarted() {
+    if (isConnected) router.push("/learn");
+    else setWalletOpen(true);
   }
 
   return (
     <main className="min-h-screen bg-white">
-      <NavBar />
+      <div className="bg-[radial-gradient(circle_at_1px_1px,rgba(26,71,49,0.08)_1px,transparent_0)] [background-size:24px_24px]">
+        <NavBar />
 
-      <FadeIn>
-        <section className="african-pattern relative flex min-h-screen items-center overflow-hidden bg-forest text-cream">
-          <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-5 py-24 lg:grid-cols-2 lg:px-8 lg:py-32">
+        <FadeIn>
+          <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
             <div>
-              <h1 className="max-w-2xl font-serif text-4xl font-black leading-tight tracking-tight md:text-6xl lg:text-7xl">
-                Learn Kiswahili from Africa&apos;s Best Tutors
+              <span className="inline-flex rounded-full bg-cream px-4 py-2 text-sm font-bold text-forest">
+                🌍 Africa&apos;s #1 Kiswahili Platform
+              </span>
+              <h1 className="mt-6 font-serif text-4xl font-black leading-tight text-forest md:text-6xl">
+                Master Kiswahili with Africa&apos;s Best Creators
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-cream/90 md:text-xl">
-                Pay with crypto or card. Book in minutes. Learn from anywhere across Africa.
+              <p className="mt-6 max-w-xl text-lg text-foreground/70">
+                Access premium lessons, books, and courses. Pay with crypto or card.
               </p>
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                <Link
-                  href="/search"
-                  className="inline-flex h-14 items-center justify-center rounded-full bg-gold px-8 text-base font-bold text-foreground transition hover:bg-[#e6ac00]"
-                >
-                  Find a Tutor
-                </Link>
-                <Link
-                  href="/auth/register?role=tutor"
-                  className="inline-flex h-14 items-center justify-center rounded-full border-2 border-white px-8 text-base font-bold text-white transition hover:bg-white hover:text-forest"
-                >
-                  Become a Tutor
-                </Link>
-              </div>
-              <div className="mt-12 inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-bold text-foreground shadow-lg lg:mt-16">
-                <span>🌍</span>
-                <span>Now accepting cUSD &amp; CELO payments</span>
-              </div>
-            </div>
-
-            <div className="hidden grid-cols-2 gap-4 lg:grid">
-              {fallbackTutors.map((tutor, index) => (
-                <div
-                  key={tutor.id}
-                  className={`rounded-2xl bg-white/95 p-4 shadow-lg ${index % 2 === 0 ? "animate-float" : "animate-float-delayed"}`}
-                  style={{ animationDelay: `${index * 0.3}s` }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-jade text-sm font-bold text-white">
-                        {tutor.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
-                      </div>
-                      {tutor.online ? (
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-jade" />
-                      ) : null}
-                    </div>
-                    <div>
-                      <p className="font-serif text-sm font-bold text-forest">{tutor.name}</p>
-                      <p className="text-xs text-foreground/60">{tutor.location}</p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-xs font-bold text-gold">${tutor.price}/hr · {tutor.rating}★</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </FadeIn>
-
-      <section className="border-b border-forest/10 bg-white py-12">
-        <div className="mx-auto grid max-w-5xl gap-8 px-5 md:grid-cols-3">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.label}
-              className={`text-center ${index > 0 ? "md:border-l md:border-forest/10" : ""}`}
-            >
-              <p className="font-serif text-4xl font-black text-forest">
-                <span className="border-b-4 border-gold">{stat.value}</span>
-              </p>
-              <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-foreground/60">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="tutors" className="bg-off-white py-20">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <h2 className="font-serif text-4xl font-black text-forest md:text-5xl">Featured Tutors</h2>
-
-          <form onSubmit={submitSearch} className="relative mt-8">
-            <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-forest/40" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-14 w-full rounded-full border border-forest/10 bg-white pl-14 pr-5 text-forest outline-none ring-gold/30 transition focus:ring-4"
-              placeholder="Search tutors..."
-            />
-          </form>
-
-          <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
-            {filters.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => selectFilter(item.value)}
-                className={`shrink-0 rounded-full px-5 py-2 text-sm font-bold transition ${
-                  activeFilter === item.value
-                    ? "bg-gold text-foreground"
-                    : "border border-forest/15 bg-white text-forest hover:border-gold"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          {showingFallback ? (
-            <div className="mt-8 rounded-2xl bg-cream p-5 text-center font-bold text-forest">
-              Showing sample tutors — be the first to join!
-            </div>
-          ) : null}
-          {error ? (
-            <div className="mt-8 rounded-2xl bg-red-50 p-5 text-center font-semibold text-red-700">{error}</div>
-          ) : null}
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {loading
-              ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)
-              : tutors.map((tutor) => (
-                  <TutorCard key={tutor.id} tutor={tutor} href={showingFallback ? "/search" : undefined} />
-                ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="bg-forest py-20 text-cream">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <h2 className="text-center font-serif text-4xl font-black md:text-5xl">How It Works</h2>
-          <div className="relative mt-14 grid gap-8 md:grid-cols-3">
-            <div className="absolute left-[20%] right-[20%] top-10 hidden border-t-2 border-dashed border-gold/40 md:block" />
-            {steps.map((step) => (
-              <div key={step.number} className="relative text-center">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-gold text-xl font-black text-foreground">
-                  {step.number}
-                </div>
-                <step.icon className="mx-auto mt-6 h-10 w-10 text-gold" />
-                <h3 className="mt-4 font-serif text-2xl font-bold">{step.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-cream/80">{step.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" className="bg-white py-20">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <h2 className="text-center font-serif text-4xl font-black text-forest md:text-5xl">Pricing Plans</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative flex flex-col rounded-2xl p-8 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md ${
-                  plan.featured ? "bg-forest text-cream" : "border border-forest/10 bg-white text-forest"
-                }`}
-              >
-                {plan.featured ? (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-4 py-1 text-xs font-bold text-foreground">
-                    Most Popular
-                  </span>
-                ) : null}
-                <h3 className="font-serif text-2xl font-bold">{plan.name}</h3>
-                <p className={`mt-4 font-serif text-5xl font-black ${plan.featured ? "text-gold" : "text-forest"}`}>
-                  {plan.price}
-                </p>
-                <ul className="mt-6 flex-1 space-y-3 text-sm">
-                  {plan.perks.map((perk) => (
-                    <li key={perk} className="flex items-center gap-2">
-                      <UserCheck className={`h-4 w-4 shrink-0 ${plan.featured ? "text-gold" : "text-jade"}`} />
-                      {perk}
-                    </li>
-                  ))}
-                </ul>
-                <p className={`mt-4 text-xs font-semibold ${plan.featured ? "text-cream/70" : "text-foreground/60"}`}>
-                  Crypto payments coming soon 🌍
-                </p>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <button
                   type="button"
-                  className={`mt-6 h-12 rounded-full font-bold transition ${
-                    plan.featured
-                      ? "bg-gold text-foreground hover:bg-[#e6ac00]"
-                      : "border-2 border-forest text-forest hover:bg-forest hover:text-white"
+                  onClick={handleGetStarted}
+                  className="h-14 rounded-full bg-gold px-8 text-base font-bold text-foreground hover:bg-[#e6ac00]"
+                >
+                  Start Learning Free
+                </button>
+                <Link
+                  href="/publish"
+                  className="inline-flex h-14 items-center justify-center rounded-full border-2 border-forest px-8 text-base font-bold text-forest hover:bg-forest hover:text-white"
+                >
+                  Become a Creator
+                </Link>
+              </div>
+              <p className="mt-6 text-sm text-foreground/60">
+                ✓ No subscription required &nbsp; ✓ Pay per content &nbsp; ✓ Crypto payments
+              </p>
+            </div>
+
+            <div className="relative hidden h-[420px] lg:block">
+              <div className="absolute inset-0 rounded-3xl bg-forest/5" />
+              {previewCards.map((card, index) => (
+                <motion.div
+                  key={card.title}
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, delay: index * 0.6 }}
+                  className={`absolute w-64 rounded-2xl bg-forest p-5 text-cream shadow-lg ${
+                    index === 0 ? "left-4 top-8" : "bottom-8 right-4"
                   }`}
                 >
-                  {plan.cta}
-                </button>
+                  <div className={`mb-4 flex h-24 items-center justify-center rounded-xl ${contentCoverStyle(card.type)}`}>
+                    <span className="text-3xl">{contentCoverEmoji(card.type)}</span>
+                  </div>
+                  <p className="font-bold">{card.title}</p>
+                  <p className="mt-1 text-sm text-cream/70">by {card.creator}</p>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        </FadeIn>
+
+        <section className="bg-cream py-12">
+          <div className="mx-auto grid max-w-6xl gap-8 px-5 md:grid-cols-4">
+            {stats.map((stat, index) => (
+              <div key={stat.label} className={`text-center ${index > 0 ? "md:border-l md:border-forest/10" : ""}`}>
+                <p className="font-serif text-3xl font-black text-gold">{stat.value}</p>
+                <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-foreground/55">{stat.label}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="bg-cream py-20">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <h2 className="text-center font-serif text-4xl font-black text-forest">What Learners Say</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+          <h2 className="text-center font-serif text-4xl font-black text-forest">Why LughaPro</h2>
+          <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {features.map((feature) => (
+              <div key={feature.title} className="rounded-2xl bg-white p-6 shadow-sm">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-gold/20 text-2xl">{feature.icon}</span>
+                <h3 className="mt-4 font-serif text-xl font-bold text-forest">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/65">{feature.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-off-white py-20">
+          <div className="mx-auto max-w-7xl px-5 lg:px-8">
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="font-serif text-4xl font-black text-forest">Latest from Our Creators</h2>
+              <Link href="/learn" className="text-sm font-bold text-jade hover:underline">
+                View all
+              </Link>
+            </div>
+            {loadingContent ? (
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <SkeletonCard key={index} />
+                ))}
+              </div>
+            ) : content.length === 0 ? (
+              <div className="mt-8 rounded-2xl bg-white p-10 text-center shadow-sm">
+                <p className="text-lg font-bold text-forest">No content published yet — be the first creator!</p>
+                <Link href="/publish" className="mt-4 inline-flex rounded-full bg-gold px-6 py-3 font-bold text-foreground">
+                  Publish Content
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-8 flex gap-6 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
+                {content.map((item) => (
+                  <div key={item.id} className="min-w-[280px] lg:min-w-0">
+                    <ContentCard item={item} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="py-20">
+          <div className="mx-auto max-w-7xl px-5 lg:px-8">
+            <div className="flex items-end justify-between">
+              <h2 className="font-serif text-4xl font-black text-forest">Meet Our Top Creators</h2>
+              <Link href="/tutors" className="rounded-full border-2 border-forest px-5 py-2 text-sm font-bold text-forest hover:bg-forest hover:text-white">
+                View All Creators
+              </Link>
+            </div>
+            {loadingCreators ? (
+              <div className="mt-8 h-40 animate-pulse rounded-2xl bg-cream" />
+            ) : creators.length === 0 ? (
+              <p className="mt-8 text-foreground/60">No creators yet. Check back soon.</p>
+            ) : (
+              <div className="mt-8 flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
+                {creators.map((tutor) => (
+                  <div key={tutor.id} className="min-w-[240px] lg:min-w-0">
+                    <CreatorCard tutor={tutor} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="bg-cream py-20">
+          <div className="mx-auto grid max-w-7xl gap-6 px-5 md:grid-cols-3 lg:px-8">
             {testimonials.map((item) => (
-              <div
-                key={item.name}
-                className="rounded-2xl bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
-              >
-                <p className="text-4xl font-serif text-gold">&ldquo;</p>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/80">{item.quote}</p>
+              <div key={item.name} className="rounded-2xl bg-white p-6 shadow-sm">
+                <p className="text-4xl text-gold">&ldquo;</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/75">{item.quote}</p>
                 <div className="mt-6 flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center rounded-full bg-gold text-sm font-bold text-foreground">
-                    {item.initials}
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-forest text-sm font-bold text-white">
+                    {item.name[0]}
                   </div>
                   <div>
                     <p className="font-bold text-forest">{item.name}</p>
                     <p className="text-sm text-foreground/60">{item.country}</p>
+                    <p className="text-sm text-gold">{"★".repeat(item.rating)}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="bg-forest py-16 text-cream">
+          <div className="mx-auto max-w-4xl px-5 text-center">
+            <h2 className="font-serif text-4xl font-black">Ready to start learning Kiswahili?</h2>
+            <p className="mt-4 text-cream/75">Join thousands of learners accessing premium African language content.</p>
+            <button
+              type="button"
+              onClick={handleGetStarted}
+              className="mt-8 rounded-full bg-gold px-8 py-4 text-lg font-bold text-foreground hover:bg-[#e6ac00]"
+            >
+              Get Started Now
+            </button>
+          </div>
+        </section>
+      </div>
 
       <Footer />
+      <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
     </main>
   );
 }

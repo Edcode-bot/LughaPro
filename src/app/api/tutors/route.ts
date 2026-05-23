@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   if (filter === 'online') query = query.eq('is_online', true)
   if (filter === 'cusd') query = query.eq('accepts_cusd', true)
   if (filter === 'top_rated') query = query.gte('rating', 4.7)
+  if (filter === 'featured') query = query.eq('is_featured', true)
   if (maxPrice) query = query.lte('hourly_rate', Number(maxPrice))
   if (search) {
     query = query.or(`bio.ilike.%${search}%,specialty.ilike.%${search}%,location.ilike.%${search}%`)

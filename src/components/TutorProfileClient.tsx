@@ -1,24 +1,22 @@
 "use client";
 
-import { Languages, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AvailabilityGrid } from "@/components/ui/AvailabilityGrid";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { BookingPanel } from "@/components/ui/BookingPanel";
-import { Card } from "@/components/ui/Card";
-import { ExpandableAbout } from "@/components/ui/ExpandableAbout";
+import Link from "next/link";
+import { ContentCard } from "@/components/ui/ContentCard";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { StarRating } from "@/components/ui/StarRating";
-import { ReviewWithStudent, TutorWithProfile } from "@/types";
+import { countryFlag, initials, previewText } from "@/lib/content";
+import { ContentItem, TutorWithProfile } from "@/types";
 
 type ApiResponse<T> = { data: T | null; error: string | null };
 
 export function TutorProfileClient({ id }: { id: string }) {
   const [tutor, setTutor] = useState<TutorWithProfile | null>(null);
-  const [reviews, setReviews] = useState<ReviewWithStudent[]>([]);
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [tab, setTab] = useState<"books" | "posts" | "about">("books");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,31 +24,153 @@ export function TutorProfileClient({ id }: { id: string }) {
     let active = true;
     Promise.all([
       fetch(`/api/tutors/${id}`).then((response) => response.json() as Promise<ApiResponse<TutorWithProfile>>),
-      fetch(`/api/reviews/tutor/${id}`).then((response) => response.json() as Promise<ApiResponse<ReviewWithStudent[]>>),
+      fetch(`/api/content?author_id=${id}&limit=50`).then((response) => response.json() as Promise<ApiResponse<{ items: ContentItem[] }>>),
     ])
-      .then(([tutorResult, reviewResult]) => {
+      .then(([tutorResult, contentResult]) => {
         if (!active) return;
-        if (tutorResult.error || !tutorResult.data) setError(tutorResult.error ?? "Tutor not found");
+        if (tutorResult.error || !tutorResult.data) setError(tutorResult.error ?? "Creator not found");
         else setTutor(tutorResult.data);
-        setReviews(reviewResult.data ?? []);
+        setContent(contentResult.data?.items ?? []);
       })
-      .catch(() => active && setError("Unable to load tutor."))
+      .catch(() => active && setError("Unable to load creator profile."))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [id]);
 
-  if (loading) return <main className="min-h-screen bg-off-white"><NavBar /><div className="mx-auto max-w-7xl px-5 py-12"><div className="h-96 animate-pulse rounded-3xl bg-cream" /></div></main>;
-  if (error || !tutor) return <main className="min-h-screen bg-off-white"><NavBar /><p className="mx-auto max-w-3xl px-5 py-20 text-red-700">{error ?? "Tutor not found"}</p></main>;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-off-white">
+        <NavBar />
+        <div className="mx-auto max-w-7xl px-5 py-12">
+          <div className="h-96 animate-pulse rounded-3xl bg-cream" />
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !tutor) {
+    return (
+      <main className="min-h-screen bg-off-white">
+        <NavBar />
+        <p className="mx-auto max-w-3xl px-5 py-20 text-red-700">{error ?? "Creator not found"}</p>
+      </main>
+    );
+  }
+
+  const name = tutor.profile?.full_name ?? "Creator";
+  const country = tutor.profile?.country ?? tutor.location ?? "East Africa";
+  const books = content.filter((item) => item.type === "book" || item.type === "lesson");
+  const posts = content.filter((item) => item.type === "post");
+  const topCreator = Number(tutor.rating) >= 4.8;
 
   return (
-    <main className="min-h-screen bg-off-white">
-      <NavBar />
-      <FadeIn><section className="bg-gradient-to-br from-forest to-jade px-5 py-14 text-cream lg:px-8"><div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center"><Avatar name={tutor.profile.full_name} src={tutor.profile.avatar_url ?? undefined} online={tutor.is_online} size="xl" /><div className="flex-1"><div className="flex flex-wrap items-center gap-3">{tutor.is_online ? <Badge tone="online">Online Now</Badge> : null}{Number(tutor.rating) >= 4.7 ? <Badge tone="cusd">Top Tutor</Badge> : null}</div><h1 className="mt-4 font-serif text-5xl font-black">{tutor.profile.full_name}</h1><div className="mt-4 flex flex-wrap gap-5 text-cream/80"><span className="flex items-center gap-2"><MapPin className="h-4 w-4" />{tutor.location ?? "East Africa"}</span><span className="flex items-center gap-2"><Languages className="h-4 w-4" />{(tutor.languages ?? ["Kiswahili"]).join(", ")}</span></div><div className="mt-4"><StarRating rating={Number(tutor.rating ?? 0)} /></div><p className="mt-5 max-w-3xl leading-8 text-cream/82">{tutor.bio ?? tutor.specialty ?? "Premium Kiswahili tutor."}</p></div></div></section></FadeIn>
-      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-12 lg:grid-cols-[1fr_420px] lg:px-8"><div className="space-y-8"><Card><h2 className="font-serif text-3xl font-black text-forest">Availability this week</h2><p className="mt-2 text-forest/65">Select a time that works for your schedule.</p><div className="mt-6"><AvailabilityGrid /></div></Card><ExpandableAbout text={tutor.bio ?? "This tutor designs lessons around your goals with pronunciation coaching, vocabulary practice, dialogue drills, and post-lesson notes."} /><section><h2 className="font-serif text-3xl font-black text-forest">Student reviews</h2><div className="mt-6 grid gap-4">{reviews.map((review) => <Card key={review.id}><div className="flex items-center gap-3"><Avatar name={review.student.full_name} src={review.student.avatar_url ?? undefined} /><div><p className="font-bold text-forest">{review.student.full_name}</p><p className="text-sm text-forest/55">{new Date(review.created_at).toLocaleDateString()}</p></div></div><div className="mt-3"><StarRating rating={review.rating} /></div><p className="mt-4 text-forest/75">{review.comment}</p></Card>)}</div></section></div><BookingPanel hourlyRate={Number(tutor.hourly_rate)} tutorId={tutor.id} tutorName={tutor.profile.full_name} availability={tutor.availability ?? []} /></section>
-      <Footer />
-    </main>
+    <ErrorBoundary>
+      <main className="min-h-screen bg-off-white">
+        <NavBar />
+        <FadeIn>
+          <section className="bg-forest px-5 py-14 text-cream lg:px-8">
+            <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center">
+              <div className="grid h-24 w-24 place-items-center rounded-full bg-gold text-3xl font-black text-foreground">
+                {initials(name)}
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {tutor.is_verified ? <span className="rounded-full bg-jade/20 px-3 py-1 text-xs font-bold">✓ Verified</span> : null}
+                  {topCreator ? <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold">★ Top Creator</span> : null}
+                </div>
+                <h1 className="mt-3 font-serif text-5xl font-black">{name}</h1>
+                <p className="mt-2 text-cream/80">{countryFlag(country)} {country}</p>
+                <div className="mt-4">
+                  <StarRating rating={Number(tutor.rating ?? 0)} />
+                </div>
+                <div className="mt-6 grid gap-4 sm:grid-cols-4">
+                  {[
+                    ["Total Content", String(content.length)],
+                    ["Total Learners", String(tutor.review_count ?? 0)],
+                    ["Rating", Number(tutor.rating ?? 0).toFixed(1)],
+                    ["Member Since", new Date(tutor.created_at).getFullYear().toString()],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl bg-white/10 p-3">
+                      <p className="text-xs text-cream/60">{label}</p>
+                      <p className="text-xl font-black">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-6 max-w-3xl leading-relaxed text-cream/85">
+                  {tutor.bio ?? tutor.profile?.bio ?? "Premium Kiswahili creator."}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+            <div className="flex gap-2">
+              {[
+                ["books", "Books"],
+                ["posts", "Posts"],
+                ["about", "About"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key as typeof tab)}
+                  className={`rounded-full px-5 py-2 text-sm font-bold ${
+                    tab === key ? "bg-gold text-foreground" : "bg-white text-forest"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {tab === "books" ? (
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {books.length === 0 ? (
+                  <p className="text-foreground/60">No books published yet.</p>
+                ) : (
+                  books.map((item) => <ContentCard key={item.id} item={item} />)
+                )}
+              </div>
+            ) : null}
+
+            {tab === "posts" ? (
+              <div className="mt-8 grid gap-4">
+                {posts.length === 0 ? (
+                  <p className="text-foreground/60">No posts published yet.</p>
+                ) : (
+                  posts.map((item) => (
+                    <article key={item.id} className="rounded-2xl bg-white p-6 shadow-sm">
+                      <h3 className="font-bold text-forest">{item.title}</h3>
+                      <p className="mt-2 text-sm text-foreground/70">{previewText(item.content ?? item.description ?? "", 0.25)}</p>
+                      <Link href="/learn" className="mt-4 inline-flex text-sm font-bold text-jade">
+                        Read on Learn →
+                      </Link>
+                    </article>
+                  ))
+                )}
+              </div>
+            ) : null}
+
+            {tab === "about" ? (
+              <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+                <h2 className="font-serif text-2xl font-black text-forest">About {name}</h2>
+                <p className="mt-4 leading-relaxed text-foreground/75">
+                  {tutor.profile?.bio ?? tutor.bio ?? "This creator designs Kiswahili content for learners across Africa."}
+                </p>
+                <p className="mt-4 text-sm font-semibold text-forest">
+                  Languages: {(tutor.languages ?? tutor.profile?.languages ?? ["Kiswahili"]).join(", ")}
+                </p>
+                <p className="mt-2 text-sm text-foreground/60">
+                  Teaching focus: {tutor.specialty ?? "General Kiswahili"}
+                </p>
+              </div>
+            ) : null}
+          </section>
+        </FadeIn>
+        <Footer />
+      </main>
+    </ErrorBoundary>
   );
 }
-

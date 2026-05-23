@@ -1,72 +1,31 @@
-import { getAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { NextRequest } from 'next/server'
+import { jsonError, jsonOk } from '@/lib/api'
+import { supabaseAdmin } from '@/lib/supabase'
 
-type DashboardBooking = {
-  id: string
-  status?: string | null
-  duration_minutes?: number | null
-  amount?: number | string | null
-  student_id?: string | null
-  scheduled_at: string
-  created_at: string
-  updated_at?: string | null
-}
+export async function GET(request: NextRequest) {
+  const wallet = request.nextUrl.searchParams.get('user')?.toLowerCase()
+  if (!wallet) return jsonError('user wallet is required', 422)
 
-export async function GET() {
-  const auth = await getAuthenticatedProfile()
-  if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
+  try {
+    const { data: purchases, error } = await supabaseAdmin
+      .from('purchases')
+      .select('*')
+      .eq('user_wallet', wallet)
 
-  const supabase = await createServerSupabaseClient()
-  const { data: tutor } = await supabase.from('tutors').select('id').eq('profile_id', auth.userId).maybeSingle()
+    if (error) {
+      return jsonOk({ content_accessed: 0, books_in_library: 0, cusd_spent: 0 }, 'Dashboard stats loaded')
+    }
 
-  let bookingQuery = supabase
-    .from('bookings')
-    .select('*, tutor:tutors(*, profile:profiles(*)), student:profiles(*)')
-    .order('scheduled_at', { ascending: true })
+    const items = purchases ?? []
+    const booksInLibrary = items.filter((item) => item.content_type === 'book' || item.content_type === 'lesson').length
+    const cusdSpent = items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
 
-  if (tutor?.id) {
-    bookingQuery = bookingQuery.or(`student_id.eq.${auth.userId},tutor_id.eq.${tutor.id}`)
-  } else {
-    bookingQuery = bookingQuery.eq('student_id', auth.userId)
+    return jsonOk({
+      content_accessed: items.length,
+      books_in_library: booksInLibrary,
+      cusd_spent: Number(cusdSpent.toFixed(2)),
+    }, 'Dashboard stats loaded')
+  } catch {
+    return jsonOk({ content_accessed: 0, books_in_library: 0, cusd_spent: 0 }, 'Dashboard stats loaded')
   }
-
-  const { data: bookings, error } = await bookingQuery
-  if (error) return jsonError('Unable to load dashboard stats', 500)
-
-  const allBookings = (bookings ?? []) as DashboardBooking[]
-  const completed = allBookings.filter((booking) => booking.status === 'completed')
-  const totalSessions = completed.length
-  const hoursLearned = completed.reduce((sum, booking) => sum + Number(booking.duration_minutes ?? 0) / 60, 0)
-  const amountSpent = allBookings
-    .filter((booking) => booking.student_id === auth.userId && ['paid', 'active', 'completed'].includes(String(booking.status)))
-    .reduce((sum, booking) => sum + Number(booking.amount ?? 0), 0)
-
-  const { count: referralCount } = await supabase
-    .from('referrals')
-    .select('id', { count: 'exact', head: true })
-    .eq('referrer_id', auth.userId)
-
-  const upcomingSessions = allBookings
-    .filter((booking) => new Date(booking.scheduled_at).getTime() >= Date.now() && booking.status !== 'cancelled')
-    .slice(0, 3)
-
-  const recentActivity = allBookings
-    .slice()
-    .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())
-    .slice(0, 5)
-    .map((booking) => ({
-      id: booking.id,
-      label: `Booking ${booking.status}`,
-      timestamp: booking.updated_at ?? booking.created_at,
-    }))
-
-  return jsonOk({
-    total_sessions: totalSessions,
-    hours_learned: Number(hoursLearned.toFixed(1)),
-    amount_spent: Number(amountSpent.toFixed(2)),
-    referral_count: referralCount ?? 0,
-    upcoming_sessions: upcomingSessions,
-    recent_activity: recentActivity,
-  }, 'Dashboard stats loaded')
 }
-

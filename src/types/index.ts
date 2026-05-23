@@ -1,6 +1,8 @@
 export type BookingStatus = 'pending' | 'paid' | 'active' | 'completed' | 'cancelled' | 'disputed'
 export type PaymentMethod = 'cusd' | 'celo' | 'fiat'
 export type UserRole = 'student' | 'tutor' | 'admin'
+export type ContentType = 'book' | 'post' | 'lesson'
+export type ContentLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'All'
 
 export type Profile = {
   id: string
@@ -10,6 +12,9 @@ export type Profile = {
   avatar_url: string | null
   wallet_address: string | null
   referral_code: string | null
+  country?: string | null
+  bio?: string | null
+  languages?: string[] | null
   created_at: string
   updated_at: string | null
 }
@@ -23,13 +28,75 @@ export type Tutor = {
   hourly_rate: number
   rating: number
   review_count: number
+  total_reviews?: number
   is_online: boolean
   accepts_cusd: boolean
   accepts_celo: boolean
   accepts_fiat: boolean
   location: string | null
+  is_verified?: boolean
+  is_featured?: boolean
   created_at: string
   updated_at: string | null
+}
+
+export type Book = {
+  id: string
+  author_id: string
+  title: string
+  description: string | null
+  level: string | null
+  price: number
+  cover_image_url: string | null
+  file_url: string | null
+  tags: string[] | null
+  language: string | null
+  content_type?: ContentType
+  created_at: string
+}
+
+export type Post = {
+  id: string
+  author_id: string
+  title: string
+  content: string
+  cover_image_url: string | null
+  is_premium: boolean
+  price: number
+  tags: string[] | null
+  language: string | null
+  created_at: string
+}
+
+export type ContentItem = {
+  id: string
+  type: ContentType
+  title: string
+  description: string | null
+  content?: string | null
+  level: string | null
+  price: number
+  cover_image_url: string | null
+  file_url: string | null
+  tags: string[] | null
+  language: string | null
+  author_id: string
+  author?: Profile
+  created_at: string
+  popularity?: number
+}
+
+export type Purchase = {
+  id: string
+  user_wallet: string
+  content_id: string
+  content_type: ContentType
+  amount: number
+  purchased_at: string
+}
+
+export type PurchaseWithContent = Purchase & {
+  content: ContentItem
 }
 
 export type Availability = {
@@ -93,6 +160,8 @@ export type TutorWithProfile = Tutor & {
   profile: Profile
   availability?: Availability[]
   reviews?: ReviewWithStudent[]
+  book_count?: number
+  post_count?: number
 }
 
 export type BookingWithDetails = Booking & {
@@ -107,7 +176,7 @@ export type ReviewWithStudent = Review & {
 export type ApiResponse<T> = {
   data: T | null
   error: string | null
-  message: string
+  message?: string
 }
 
 export type PaginatedResponse<T> = {
@@ -117,3 +186,8 @@ export type PaginatedResponse<T> = {
   total: number
 }
 
+export type DashboardStats = {
+  content_accessed: number
+  books_in_library: number
+  cusd_spent: number
+}
