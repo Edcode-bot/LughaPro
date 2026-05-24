@@ -2,6 +2,7 @@
 
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { ContentCard } from "@/components/ui/ContentCard";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -15,11 +16,12 @@ import { ContentItem } from "@/types";
 
 export function LearnClient() {
   const { address } = useAuth();
-  const { hasAccess, recordPurchase } = usePurchases();
+  const { purchaseIds, recordPurchase } = usePurchases();
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [type, setType] = useState("all");
   const [level, setLevel] = useState("all");
   const [price, setPrice] = useState("all");
@@ -47,13 +49,17 @@ export function LearnClient() {
   const visible = useMemo(() => sortContent(filterContent(items, { type, level, price, language }), sort), [items, type, level, price, language, sort]);
 
   async function handleAccess(item: ContentItem) {
-    if (!address) return;
-    if (isFreeContent(item) || hasAccess(item.id, item.type)) {
+    if (!address) {
+      setWalletOpen(true);
+      return;
+    }
+    if (isFreeContent(item) || purchaseIds.includes(item.id)) {
       await recordPurchase(item);
       if (item.file_url) window.open(item.file_url, "_blank");
       return;
     }
-    await recordPurchase(item);
+    const ok = await recordPurchase(item);
+    if (ok && item.file_url) window.open(item.file_url, "_blank");
   }
 
   const sidebar = (
@@ -102,7 +108,6 @@ export function LearnClient() {
                 <div className="rounded-2xl bg-white p-12 text-center shadow-sm">
                   <p className="text-5xl">📚</p>
                   <h2 className="mt-4 font-serif text-2xl font-black text-forest">No content matches your filters</h2>
-                  <p className="mt-2 text-foreground/60">Try adjusting filters or check back when creators publish.</p>
                 </div>
               ) : (
                 <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -110,7 +115,7 @@ export function LearnClient() {
                     <ContentCard
                       key={`${item.type}-${item.id}`}
                       item={item}
-                      purchased={hasAccess(item.id, item.type)}
+                      purchaseIds={purchaseIds}
                       onAccess={(content) => void handleAccess(content)}
                     />
                   ))}
@@ -129,6 +134,7 @@ export function LearnClient() {
         ) : null}
 
         <Footer />
+        <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
       </main>
     </ErrorBoundary>
   );
@@ -154,9 +160,7 @@ function FilterGroup({
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-              value === key ? "bg-gold text-foreground" : "bg-off-white text-forest"
-            }`}
+            className={`rounded-full px-3 py-1.5 text-xs font-bold ${value === key ? "bg-gold text-foreground" : "bg-off-white text-forest"}`}
           >
             {label}
           </button>

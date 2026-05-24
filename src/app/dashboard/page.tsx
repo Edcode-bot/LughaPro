@@ -1,10 +1,20 @@
-﻿import { AuthGuard } from '@/components/AuthGuard'
-import { DashboardClient } from '@/components/DashboardClient'
+﻿'use client'
+
+import { AuthGuard } from '@/components/AuthGuard'
+import { StudentDashboard } from '@/components/StudentDashboard'
+import { TutorDashboard } from '@/components/TutorDashboard'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function DashboardPage() {
   return (
     <AuthGuard>
-      <DashboardClient />
+      <DashboardRouter />
     </AuthGuard>
   )
+}
+
+function DashboardRouter() {
+  const { role } = useAuth()
+  if (role === 'tutor' || role === 'admin') return <TutorDashboard />
+  return <StudentDashboard />
 }

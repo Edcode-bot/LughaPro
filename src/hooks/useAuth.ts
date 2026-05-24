@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected, walletConnect } from 'wagmi/connectors'
-import { clearStoredProfile, readStoredProfile } from '@/lib/profile-storage'
+import { clearStoredProfile, readStoredProfile, saveStoredProfile } from '@/lib/profile-storage'
 import { Profile, UserRole } from '@/types'
 
 export function useAuth() {
@@ -23,20 +23,32 @@ export function useAuth() {
   const refreshProfile = useCallback(async () => {
     if (!address) return
     const stored = readStoredProfile(address)
-    if (stored) {
+    if (stored?.onboarding_completed) {
       setProfile(stored)
       return
     }
     try {
-      const response = await fetch('/api/auth/wallet-login', {
+      const response = await fetch('/api/profiles/me', {
+        headers: { 'x-wallet-address': address },
+      })
+      const result = await response.json() as { data?: Profile }
+      if (result.data) {
+        saveStoredProfile(address, result.data)
+        setProfile(result.data)
+        return
+      }
+      const login = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallet_address: address }),
       })
-      const result = await response.json() as { data?: { profile?: Profile } }
-      if (result.data?.profile) setProfile(result.data.profile)
+      const loginResult = await login.json() as { data?: { profile?: Profile } }
+      if (loginResult.data?.profile) {
+        saveStoredProfile(address, loginResult.data.profile)
+        setProfile(loginResult.data.profile)
+      }
     } catch {
-      // ignore
+      if (stored) setProfile(stored)
     }
   }, [address])
 

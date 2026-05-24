@@ -5,7 +5,7 @@ type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' }
 
 function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   return NextResponse.json({
-    data: { profile: { id: walletAddress, role, wallet_address: walletAddress }, isNew: false },
+    data: { profile: { id: walletAddress, role, wallet_address: walletAddress, onboarding_completed: false }, isNew: false },
     error: null,
   })
 }
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         full_name: `Wallet ${walletAddress.slice(0, 6)}`,
         role,
         wallet_address: walletAddress,
+        onboarding_completed: false,
       })
       .select('*')
       .single()

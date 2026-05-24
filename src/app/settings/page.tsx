@@ -41,7 +41,7 @@ function SettingsClient() {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        wallet_address: address,
+        'x-wallet-address': address,
       },
       body: JSON.stringify({
         full_name: fullName,

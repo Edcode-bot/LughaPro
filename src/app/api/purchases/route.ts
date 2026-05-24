@@ -84,7 +84,13 @@ export async function POST(request: Request) {
   if (!wallet) return jsonError('wallet_address header is required', 401)
 
   try {
-    const body = await request.json() as { content_id?: string; content_type?: ContentType; amount?: number }
+    const body = await request.json() as {
+      content_id?: string
+      content_type?: ContentType
+      amount?: number
+      progress_status?: 'not_started' | 'reading' | 'completed'
+      progress_percent?: number
+    }
     if (!body.content_id || !body.content_type) {
       return jsonError('content_id and content_type are required', 422)
     }
@@ -98,6 +104,8 @@ export async function POST(request: Request) {
           content_type: body.content_type,
           amount: Number(body.amount ?? 0),
           purchased_at: new Date().toISOString(),
+          progress_status: body.progress_status ?? 'reading',
+          progress_percent: body.progress_percent ?? 10,
         },
         { onConflict: 'user_wallet,content_id,content_type' },
       )

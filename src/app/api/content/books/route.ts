@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         tags: body.tags ?? [],
         language: body.language ?? 'Kiswahili',
         content_type: body.content_type ?? 'book',
+        published: true,
       })
       .select('*')
       .single()

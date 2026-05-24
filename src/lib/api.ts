@@ -5,7 +5,11 @@ import { supabaseAdmin } from './supabase'
 import { Profile } from '@/types'
 
 export function getWalletAddress(request: Request) {
-  return request.headers.get('wallet_address')?.toLowerCase() ?? null
+  return (
+    request.headers.get('x-wallet-address')?.toLowerCase() ??
+    request.headers.get('wallet_address')?.toLowerCase() ??
+    null
+  )
 }
 
 export async function getProfileByWallet(walletAddress: string): Promise<

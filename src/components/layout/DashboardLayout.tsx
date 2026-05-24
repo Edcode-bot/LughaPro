@@ -2,12 +2,16 @@
 
 import clsx from "clsx";
 import {
+  Award,
+  BarChart3,
   BookOpen,
+  FileText,
   Home,
   LayoutDashboard,
   LogOut,
   PenSquare,
   Settings,
+  Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,22 +22,38 @@ import { NavBar } from "@/components/ui/NavBar";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/content";
 import { shortenAddress } from "@/lib/minipay";
+import { UserRole } from "@/types";
 
-const baseLinks = [
+const studentLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/library", label: "My Library", icon: BookOpen },
   { href: "/learn", label: "Browse Content", icon: Home },
   { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/certificates", label: "Certificates", icon: Award },
   { href: "/settings", label: "Settings", icon: Settings },
-]
+];
 
-export function DashboardLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname()
-  const { displayName, address, role, disconnect } = useAuth()
+const tutorLinks = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/my-content", label: "My Content", icon: FileText },
+  { href: "/publish", label: "Publish", icon: PenSquare },
+  { href: "/earnings", label: "Earnings", icon: BarChart3 },
+  { href: "/students", label: "My Students", icon: Users },
+  { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
 
-  const links = role === "tutor"
-    ? [...baseLinks.slice(0, 4), { href: "/publish", label: "Publish", icon: PenSquare }, ...baseLinks.slice(4)]
-    : baseLinks
+export function DashboardLayout({
+  children,
+  role: roleOverride,
+}: {
+  children: ReactNode;
+  role?: UserRole;
+}) {
+  const pathname = usePathname();
+  const { displayName, address, role: authRole, disconnect } = useAuth();
+  const role = roleOverride ?? authRole;
+  const links = role === "tutor" || role === "admin" ? tutorLinks : studentLinks;
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -52,8 +72,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
           <nav className="mt-8 flex flex-1 flex-col gap-1">
             {links.map((link) => {
-              const active = pathname === link.href
-              const Icon = link.icon
+              const active = pathname === link.href;
+              const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
@@ -66,7 +86,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                   <Icon className="h-5 w-5" />
                   {link.label}
                 </Link>
-              )
+              );
             })}
           </nav>
 
@@ -84,5 +104,5 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
       <MobileBottomNav />
     </div>
-  )
+  );
 }

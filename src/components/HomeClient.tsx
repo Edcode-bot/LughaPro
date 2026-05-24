@@ -12,15 +12,9 @@ import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { contentCoverEmoji, contentCoverStyle } from "@/lib/content";
+import { formatCount } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
-import { ContentItem, TutorWithProfile } from "@/types";
-
-const stats = [
-  { value: "500+", label: "Creators" },
-  { value: "2,000+", label: "Content Items" },
-  { value: "10,000+", label: "Learners" },
-  { value: "4.9★", label: "Rating" },
-];
+import { ContentItem, PlatformStats, TutorWithProfile } from "@/types";
 
 const features = [
   { icon: "📚", title: "Rich Content Library", text: "Books, lessons, and articles from verified creators across Africa." },
@@ -48,8 +42,16 @@ export function HomeClient() {
   const [loadingContent, setLoadingContent] = useState(true);
   const [loadingCreators, setLoadingCreators] = useState(true);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
+    fetch("/api/stats")
+      .then((response) => response.json())
+      .then((result: { data?: PlatformStats }) => setPlatformStats(result.data ?? null))
+      .catch(() => setPlatformStats(null))
+      .finally(() => setLoadingStats(false));
+
     fetch("/api/content?limit=6")
       .then((response) => response.json())
       .then((result: { data?: { items: ContentItem[] } }) => setContent(result.data?.items ?? []))
@@ -129,9 +131,18 @@ export function HomeClient() {
 
         <section className="bg-cream py-12">
           <div className="mx-auto grid max-w-6xl gap-8 px-5 md:grid-cols-4">
-            {stats.map((stat, index) => (
+            {[
+              { value: platformStats ? formatCount(platformStats.creators) : "—", label: "Creators" },
+              { value: platformStats ? formatCount(platformStats.content) : "—", label: "Content Items" },
+              { value: platformStats ? formatCount(platformStats.learners) : "—", label: "Learners" },
+              { value: platformStats ? `${platformStats.rating}★` : "—", label: "Rating" },
+            ].map((stat, index) => (
               <div key={stat.label} className={`text-center ${index > 0 ? "md:border-l md:border-forest/10" : ""}`}>
-                <p className="font-serif text-3xl font-black text-gold">{stat.value}</p>
+                {loadingStats ? (
+                  <div className="mx-auto h-9 w-20 animate-pulse rounded bg-forest/10" />
+                ) : (
+                  <p className="font-serif text-3xl font-black text-gold">{stat.value}</p>
+                )}
                 <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-foreground/55">{stat.label}</p>
               </div>
             ))}

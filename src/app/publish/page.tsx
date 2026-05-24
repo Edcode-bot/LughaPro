@@ -1,27 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { FormEvent, Suspense, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
+import { TutorGuard } from '@/components/TutorGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/Toast'
-import Link from 'next/link'
 
 export default function PublishPage() {
   return (
-    <AuthGuard>
-      <PublishClient />
-    </AuthGuard>
+    <Suspense fallback={<div className="grid min-h-screen place-items-center">Loading...</div>}>
+      <AuthGuard>
+        <TutorGuard>
+          <PublishClient />
+        </TutorGuard>
+      </AuthGuard>
+    </Suspense>
   )
 }
 
 function PublishClient() {
-  const { address, role } = useAuth()
+  const router = useRouter()
+  const params = useSearchParams()
+  const initialTab = params.get('tab') === 'post' ? 'post' : 'book'
+  const { address } = useAuth()
   const { toast } = useToast()
-  const [tab, setTab] = useState<'book' | 'post'>('book')
+  const [tab, setTab] = useState<'book' | 'post'>(initialTab)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [book, setBook] = useState({
     title: '',
@@ -42,71 +52,79 @@ function PublishClient() {
     tags: '',
   })
 
-  if (role !== 'tutor' && role !== 'admin') {
-    return (
-      <DashboardLayout>
-        <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
-          <h1 className="font-serif text-3xl font-black text-forest">Become a Creator</h1>
-          <p className="mt-3 text-foreground/65">
-            Connect your wallet and select &quot;I want to teach&quot; to publish content.
-          </p>
-          <Link href="/" className="mt-6 inline-flex rounded-full bg-gold px-6 py-3 font-bold text-foreground">
-            Connect Wallet
-          </Link>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  async function publishBook() {
+  async function publishBook(event: FormEvent) {
+    event.preventDefault()
     if (!address) return
+    if (!book.title.trim()) {
+      setError('Title is required.')
+      return
+    }
+    if (Number(book.price) < 0) {
+      setError('Price must be 0 or greater.')
+      return
+    }
     setSubmitting(true)
+    setError(null)
     const response = await fetch('/api/content/books', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', wallet_address: address },
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
       body: JSON.stringify({
         ...book,
-        tags: book.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
         price: Number(book.price),
+        tags: book.tags.split(',').map((t) => t.trim()).filter(Boolean),
       }),
     })
     const result = await response.json()
     setSubmitting(false)
     if (result.error) {
-      toast({ title: 'Publish failed', description: result.error, type: 'error' })
+      setError(result.error)
       return
     }
-    toast({ title: 'Book published', type: 'success' })
+    toast({ title: 'Book published!', type: 'success' })
+    router.push('/my-content')
   }
 
-  async function publishPost() {
+  async function publishPost(event: FormEvent) {
+    event.preventDefault()
     if (!address) return
+    if (!post.title.trim() || !post.content.trim()) {
+      setError('Title and content are required.')
+      return
+    }
     setSubmitting(true)
+    setError(null)
     const response = await fetch('/api/content/posts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', wallet_address: address },
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
       body: JSON.stringify({
         ...post,
-        tags: post.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
         price: Number(post.price),
+        tags: post.tags.split(',').map((t) => t.trim()).filter(Boolean),
       }),
     })
     const result = await response.json()
     setSubmitting(false)
     if (result.error) {
-      toast({ title: 'Publish failed', description: result.error, type: 'error' })
+      setError(result.error)
       return
     }
-    toast({ title: 'Post published', type: 'success' })
+    toast({ title: 'Post published!', type: 'success' })
+    router.push('/my-content')
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout role="tutor">
       <ErrorBoundary>
         <FadeIn>
-          <h1 className="font-serif text-4xl font-black text-forest">Publish Content</h1>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="font-serif text-4xl font-black text-forest">Publish Content</h1>
+            <Link href="/my-content" className="rounded-full border-2 border-forest px-5 py-2 text-sm font-bold text-forest">
+              My Content
+            </Link>
+          </div>
+
           <div className="mt-4 rounded-2xl bg-cream p-4 text-sm font-semibold text-forest">
-            Creator tools coming soon — full file upload via Supabase Storage is being added. Paste external URLs for now.
+            Direct file upload via Supabase Storage is coming soon. For now paste a public PDF URL (Google Drive, Dropbox, etc).
           </div>
 
           <div className="mt-6 flex gap-2">
@@ -119,47 +137,33 @@ function PublishClient() {
           </div>
 
           {tab === 'book' ? (
-            <form
-              className="mt-6 grid gap-4 rounded-2xl bg-white p-6 shadow-sm"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void publishBook()
-              }}
-            >
-              <Field label="Title" value={book.title} onChange={(value) => setBook({ ...book, title: value })} />
-              <TextArea label="Description" value={book.description} onChange={(value) => setBook({ ...book, description: value })} />
-              <Field label="Level" value={book.level} onChange={(value) => setBook({ ...book, level: value })} />
-              <Field label="Price (0 = free)" value={String(book.price)} onChange={(value) => setBook({ ...book, price: Number(value) })} />
-              <Field label="Cover image URL" value={book.cover_image_url} onChange={(value) => setBook({ ...book, cover_image_url: value })} />
-              {book.cover_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={book.cover_image_url} alt="Cover preview" className="h-32 w-48 rounded-xl object-cover" />
-              ) : null}
-              <Field label="File URL (PDF link)" value={book.file_url} onChange={(value) => setBook({ ...book, file_url: value })} />
-              <Field label="Tags (comma separated)" value={book.tags} onChange={(value) => setBook({ ...book, tags: value })} />
+            <form onSubmit={(e) => void publishBook(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl bg-white p-6 shadow-sm">
+              <Field label="Title *" value={book.title} onChange={(v) => setBook({ ...book, title: v })} />
+              <TextArea label="Description" value={book.description} onChange={(v) => setBook({ ...book, description: v })} />
+              <Field label="Level" value={book.level} onChange={(v) => setBook({ ...book, level: v })} />
+              <Field label="Price (0 = free)" value={String(book.price)} onChange={(v) => setBook({ ...book, price: Number(v) })} />
+              <Field label="Cover image URL" value={book.cover_image_url} onChange={(v) => setBook({ ...book, cover_image_url: v })} />
+              {book.cover_image_url ? <img src={book.cover_image_url} alt="" className="h-32 w-48 rounded-xl object-cover" /> : null}
+              <Field label="File URL (PDF)" value={book.file_url} onChange={(v) => setBook({ ...book, file_url: v })} />
+              <Field label="Tags" value={book.tags} onChange={(v) => setBook({ ...book, tags: v })} />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
               <button type="submit" disabled={submitting} className="rounded-full bg-gold px-6 py-3 font-bold text-foreground disabled:opacity-50">
                 {submitting ? 'Publishing...' : 'Publish Book'}
               </button>
             </form>
           ) : (
-            <form
-              className="mt-6 grid gap-4 rounded-2xl bg-white p-6 shadow-sm"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void publishPost()
-              }}
-            >
-              <Field label="Title" value={post.title} onChange={(value) => setPost({ ...post, title: value })} />
-              <TextArea label="Content (markdown supported)" value={post.content} onChange={(value) => setPost({ ...post, content: value })} />
-              <Field label="Cover image URL" value={post.cover_image_url} onChange={(value) => setPost({ ...post, cover_image_url: value })} />
-              <label className="flex items-center gap-2 text-sm font-semibold text-forest">
-                <input type="checkbox" checked={post.is_premium} onChange={(event) => setPost({ ...post, is_premium: event.target.checked })} />
+            <form onSubmit={(e) => void publishPost(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl bg-white p-6 shadow-sm">
+              <Field label="Title *" value={post.title} onChange={(v) => setPost({ ...post, title: v })} />
+              <TextArea label="Content *" value={post.content} onChange={(v) => setPost({ ...post, content: v })} />
+              <Field label="Cover image URL" value={post.cover_image_url} onChange={(v) => setPost({ ...post, cover_image_url: v })} />
+              {post.cover_image_url ? <img src={post.cover_image_url} alt="" className="h-32 w-48 rounded-xl object-cover" /> : null}
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" checked={post.is_premium} onChange={(e) => setPost({ ...post, is_premium: e.target.checked })} />
                 Premium post
               </label>
-              {post.is_premium ? (
-                <Field label="Price" value={String(post.price)} onChange={(value) => setPost({ ...post, price: Number(value) })} />
-              ) : null}
-              <Field label="Tags" value={post.tags} onChange={(value) => setPost({ ...post, tags: value })} />
+              {post.is_premium ? <Field label="Price" value={String(post.price)} onChange={(v) => setPost({ ...post, price: Number(v) })} /> : null}
+              <Field label="Tags" value={post.tags} onChange={(v) => setPost({ ...post, tags: v })} />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
               <button type="submit" disabled={submitting} className="rounded-full bg-gold px-6 py-3 font-bold text-foreground disabled:opacity-50">
                 {submitting ? 'Publishing...' : 'Publish Post'}
               </button>
@@ -171,20 +175,20 @@ function PublishClient() {
   )
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="grid gap-2 text-sm font-semibold text-forest">
       {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border border-forest/15 px-4 py-3 font-normal" />
     </label>
   )
 }
 
-function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="grid gap-2 text-sm font-semibold text-forest">
       {label}
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} className="min-h-32 rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} className="min-h-32 rounded-xl border border-forest/15 px-4 py-3 font-normal" />
     </label>
   )
 }

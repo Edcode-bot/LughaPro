@@ -93,11 +93,11 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
       }
       toast({
         title: 'Welcome to LughaPro! 🎉',
-        description: 'Start by browsing our content library.',
+        description: 'Complete your profile to get started.',
         type: 'success',
       })
       onClose()
-      router.push('/learn')
+      router.push(profile?.onboarding_completed ? '/dashboard' : '/onboarding')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to connect wallet')
     } finally {

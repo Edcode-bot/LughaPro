@@ -1,24 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ContentCard } from "@/components/ui/ContentCard";
+import { ContentPreview } from "@/components/ContentPreview";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { StarRating } from "@/components/ui/StarRating";
-import { countryFlag, initials, previewText } from "@/lib/content";
+import { countryFlag, initials } from "@/lib/content";
+import { canAccessContent } from "@/lib/access";
+import { useAuth } from "@/hooks/useAuth";
+import { usePurchases } from "@/hooks/usePurchases";
 import { ContentItem, TutorWithProfile } from "@/types";
 
 type ApiResponse<T> = { data: T | null; error: string | null };
 
 export function TutorProfileClient({ id }: { id: string }) {
+  const { address, isConnected } = useAuth();
+  const { purchaseIds, recordPurchase } = usePurchases();
   const [tutor, setTutor] = useState<TutorWithProfile | null>(null);
   const [content, setContent] = useState<ContentItem[]>([]);
   const [tab, setTab] = useState<"books" | "posts" | "about">("books");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [walletOpen, setWalletOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -38,6 +45,17 @@ export function TutorProfileClient({ id }: { id: string }) {
       active = false;
     };
   }, [id]);
+
+  async function handleAccess(item: ContentItem) {
+    if (!address) {
+      setWalletOpen(true);
+      return;
+    }
+    if (canAccessContent(item, purchaseIds)) {
+      await recordPurchase(item);
+      if (item.file_url) window.open(item.file_url, "_blank");
+    }
+  }
 
   if (loading) {
     return (
@@ -130,7 +148,14 @@ export function TutorProfileClient({ id }: { id: string }) {
                 {books.length === 0 ? (
                   <p className="text-foreground/60">No books published yet.</p>
                 ) : (
-                  books.map((item) => <ContentCard key={item.id} item={item} />)
+                  books.map((item) => (
+                    <ContentCard
+                      key={item.id}
+                      item={item}
+                      purchaseIds={purchaseIds}
+                      onAccess={handleAccess}
+                    />
+                  ))
                 )}
               </div>
             ) : null}
@@ -140,15 +165,25 @@ export function TutorProfileClient({ id }: { id: string }) {
                 {posts.length === 0 ? (
                   <p className="text-foreground/60">No posts published yet.</p>
                 ) : (
-                  posts.map((item) => (
-                    <article key={item.id} className="rounded-2xl bg-white p-6 shadow-sm">
-                      <h3 className="font-bold text-forest">{item.title}</h3>
-                      <p className="mt-2 text-sm text-foreground/70">{previewText(item.content ?? item.description ?? "", 0.25)}</p>
-                      <Link href="/learn" className="mt-4 inline-flex text-sm font-bold text-jade">
-                        Read on Learn →
-                      </Link>
-                    </article>
-                  ))
+                  posts.map((item) => {
+                    const unlocked = canAccessContent(item, purchaseIds);
+                    return (
+                      <article key={item.id} className="rounded-2xl bg-white p-6 shadow-sm">
+                        <h3 className="font-bold text-forest">{item.title}</h3>
+                        {unlocked ? (
+                          <p className="mt-2 text-sm leading-relaxed text-foreground/75">{item.content}</p>
+                        ) : (
+                          <ContentPreview
+                            item={item}
+                            onUnlock={() => {
+                              if (!isConnected) setWalletOpen(true);
+                              else void handleAccess(item);
+                            }}
+                          />
+                        )}
+                      </article>
+                    );
+                  })
                 )}
               </div>
             ) : null}
@@ -170,6 +205,7 @@ export function TutorProfileClient({ id }: { id: string }) {
           </section>
         </FadeIn>
         <Footer />
+        <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
       </main>
     </ErrorBoundary>
   );

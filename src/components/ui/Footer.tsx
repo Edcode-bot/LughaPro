@@ -6,9 +6,9 @@ const columns = [
   {
     title: "About",
     links: [
-      { label: "Our Story", href: "#" },
-      { label: "Mission", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "Our Story", href: "/about" },
+      { label: "Mission", href: "/about#mission" },
+      { label: "Careers", href: "/careers" },
     ],
   },
   {
@@ -16,7 +16,7 @@ const columns = [
     links: [
       { label: "Content Library", href: "/learn" },
       { label: "Free Content", href: "/learn?price=free" },
-      { label: "Certificates", href: "/dashboard" },
+      { label: "Certificates", href: "/certificates" },
     ],
   },
   {
@@ -24,15 +24,15 @@ const columns = [
     links: [
       { label: "Find Creators", href: "/tutors" },
       { label: "Become a Creator", href: "/publish" },
-      { label: "Creator Guidelines", href: "#" },
+      { label: "Creator Guidelines", href: "/guidelines" },
     ],
   },
   {
     title: "Support",
     links: [
-      { label: "Help Center", href: "#" },
-      { label: "Contact", href: "#" },
-      { label: "Privacy", href: "#" },
+      { label: "Help Center", href: "/help" },
+      { label: "Contact", href: "mailto:hello@lugha-pro.vercel.app" },
+      { label: "Privacy", href: "/privacy" },
     ],
   },
 ];

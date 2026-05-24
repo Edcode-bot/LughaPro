@@ -15,8 +15,64 @@ export type Profile = {
   country?: string | null
   bio?: string | null
   languages?: string[] | null
+  onboarding_completed?: boolean
   created_at: string
   updated_at: string | null
+}
+
+export type LibraryProgressStatus = 'not_started' | 'reading' | 'completed'
+
+export type Purchase = {
+  id: string
+  user_wallet: string
+  content_id: string
+  content_type: ContentType
+  amount: number
+  purchased_at: string
+  progress_status?: LibraryProgressStatus
+  progress_percent?: number
+}
+
+export type Certificate = {
+  id: string
+  student_wallet: string
+  course_name: string
+  creator_name: string
+  level: string | null
+  earned_at: string
+}
+
+export type PlatformStats = {
+  creators: number
+  content: number
+  learners: number
+  rating: number
+}
+
+export type TutorContentItem = ContentItem & {
+  published?: boolean
+  view_count?: number
+  purchase_count?: number
+  earnings?: number
+}
+
+export type EarningsSummary = {
+  total_earned: number
+  monthly: { month: string; content_sold: number; amount_earned: number }[]
+  recent: {
+    buyer_wallet: string
+    content_title: string
+    amount: number
+    purchased_at: string
+  }[]
+}
+
+export type TutorStudent = {
+  wallet: string
+  content_title: string
+  content_type: ContentType
+  amount: number
+  purchased_at: string
 }
 
 export type Tutor = {
@@ -52,6 +108,7 @@ export type Book = {
   tags: string[] | null
   language: string | null
   content_type?: ContentType
+  published?: boolean
   created_at: string
 }
 
@@ -65,6 +122,7 @@ export type Post = {
   price: number
   tags: string[] | null
   language: string | null
+  published?: boolean
   created_at: string
 }
 
@@ -84,15 +142,6 @@ export type ContentItem = {
   author?: Profile
   created_at: string
   popularity?: number
-}
-
-export type Purchase = {
-  id: string
-  user_wallet: string
-  content_id: string
-  content_type: ContentType
-  amount: number
-  purchased_at: string
 }
 
 export type PurchaseWithContent = Purchase & {
@@ -186,8 +235,16 @@ export type PaginatedResponse<T> = {
   total: number
 }
 
-export type DashboardStats = {
+export type StudentDashboardStats = {
   content_accessed: number
-  books_in_library: number
+  books_read: number
   cusd_spent: number
+  certificates_earned: number
+}
+
+export type TutorDashboardStats = {
+  total_content: number
+  total_learners: number
+  total_earned: number
+  rating: number
 }

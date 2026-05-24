@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         price: body.is_premium ? Number(body.price ?? 0) : 0,
         tags: body.tags ?? [],
         language: body.language ?? 'Kiswahili',
+        published: true,
       })
       .select('*')
       .single()
