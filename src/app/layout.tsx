@@ -19,9 +19,13 @@ export const metadata: Metadata = {
   title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",
   description: 'Book live Kiswahili sessions with verified African tutors. Pay with crypto or card.',
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
+  other: {
+    'talentapp:project_verification':
+      'b6f005b5b6023aba8fc8ce1426aecaaa5069931a78cb6f05c6535b65687eb21c8d50c3e058b3170706f1d9e81875951dcf3578f4dff68a212c9aa397bfc8426e',
   },
   openGraph: {
     title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",

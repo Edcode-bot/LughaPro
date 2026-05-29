@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+.idea/
 
 # debug
 npm-debug.log*
@@ -49,3 +50,8 @@ next-env.d.ts
 /contracts/coverage
 /contracts/deployments
 /contracts/.env
+
+contracts/.env
+contracts/node_modules
+contracts/artifacts
+contracts/cache
