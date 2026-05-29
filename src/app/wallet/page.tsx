@@ -1,7 +1,9 @@
 'use client'
 
-import { Copy, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { isAddress } from 'viem'
+import { formatUnits } from 'viem'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
@@ -9,6 +11,7 @@ import { FadeIn } from '@/components/ui/FadeIn'
 import { WalletWidget } from '@/components/WalletWidget'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/Toast'
+import { useHasBeenReferred, useReferralEarnings, useRegisterReferral } from '@/hooks/useContracts'
 
 export default function WalletPage() {
   return (
@@ -21,13 +24,25 @@ export default function WalletPage() {
 function WalletClient() {
   const { address } = useAuth()
   const { toast } = useToast()
-  const [referral, setReferral] = useState<{ referral_link?: string; total_referred?: number; total_earned?: number } | null>(null)
+  const [referral, setReferral] = useState<{
+    referral_link?: string
+    referral_code?: string
+    total_referred?: number
+    total_earned?: number
+  } | null>(null)
+  const [referrerInput, setReferrerInput] = useState('')
+  const [registering, setRegistering] = useState(false)
+
+  const wallet = address as `0x${string}` | undefined
+  const { data: hasBeenReferred, refetch: refetchReferred } = useHasBeenReferred(wallet)
+  const { data: onChainEarnings, refetch: refetchEarnings } = useReferralEarnings(wallet)
+  const { registerReferral, isPending } = useRegisterReferral()
 
   useEffect(() => {
     if (!address) return
     fetch('/api/referrals/generate', {
       method: 'POST',
-      headers: { wallet_address: address },
+      headers: { 'x-wallet-address': address },
     })
       .then((response) => response.json())
       .then((result) => setReferral(result.data ?? null))
@@ -39,6 +54,40 @@ function WalletClient() {
     await navigator.clipboard.writeText(referral.referral_link)
     toast({ title: 'Copied', description: 'Referral link copied to clipboard', type: 'success' })
   }
+
+  async function applyReferral() {
+    const referrer = referrerInput.trim().toLowerCase()
+    if (!isAddress(referrer)) {
+      toast({ title: 'Invalid address', description: 'Enter a valid Celo wallet address', type: 'error' })
+      return
+    }
+    if (referrer === address?.toLowerCase()) {
+      toast({ title: 'Invalid referrer', description: 'You cannot refer yourself', type: 'error' })
+      return
+    }
+    setRegistering(true)
+    try {
+      await registerReferral(referrer as `0x${string}`)
+      await refetchReferred()
+      toast({
+        title: 'Referral registered on-chain!',
+        description: 'Your referrer will earn 5 cUSD when you make your first purchase.',
+        type: 'success',
+      })
+      setReferrerInput('')
+      await refetchEarnings()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration failed'
+      toast({ title: 'Could not register', description: msg.slice(0, 120), type: 'error' })
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  const earnedDisplay =
+    onChainEarnings !== undefined
+      ? Number(formatUnits(onChainEarnings, 18)).toFixed(2)
+      : (referral?.total_earned ?? 0).toFixed(2)
 
   return (
     <DashboardLayout>
@@ -99,8 +148,8 @@ function WalletClient() {
 
           <section className="mt-8 rounded-2xl bg-forest p-6 text-cream">
             <h2 className="font-serif text-2xl font-bold">Earn 5 cUSD for every friend you refer</h2>
-            <p className="mt-2 text-sm text-cream/75">Share your link and earn when friends join LughaPro.</p>
-            <p className="mt-4 break-all rounded-xl bg-white/10 p-3 text-sm">
+            <p className="mt-2 text-sm text-cream/75">Share your link — rewards are paid on-chain when friends purchase.</p>
+            <p className="mt-4 break-all rounded-xl bg-white/10 p-3 text-sm font-mono">
               {referral?.referral_link ?? 'Generating link...'}
             </p>
             <button
@@ -110,11 +159,36 @@ function WalletClient() {
             >
               Copy Link
             </button>
-            <div className="mt-4 flex gap-6 text-sm">
-              <span>Referred: {referral?.total_referred ?? 0}</span>
-              <span>Earned: {referral?.total_earned ?? 0} cUSD</span>
-            </div>
+            <p className="mt-4 text-sm font-semibold text-gold">
+              You&apos;ve earned {earnedDisplay} cUSD from referrals (on-chain)
+            </p>
           </section>
+
+          {!hasBeenReferred ? (
+            <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="font-serif text-xl font-black text-forest">Enter referral code</h2>
+              <p className="mt-2 text-sm text-foreground/60">Paste your referrer&apos;s wallet address to register on-chain.</p>
+              <input
+                value={referrerInput}
+                onChange={(e) => setReferrerInput(e.target.value)}
+                placeholder="0x..."
+                className="mt-4 w-full rounded-xl border border-forest/15 px-4 py-3 font-mono text-sm"
+              />
+              <button
+                type="button"
+                disabled={registering || isPending}
+                onClick={() => void applyReferral()}
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-forest px-6 py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {(registering || isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                Apply Referral
+              </button>
+            </section>
+          ) : (
+            <section className="mt-6 rounded-2xl bg-cream p-5">
+              <p className="text-sm font-semibold text-forest">✓ Referral registered on-chain</p>
+            </section>
+          )}
         </FadeIn>
       </ErrorBoundary>
     </DashboardLayout>

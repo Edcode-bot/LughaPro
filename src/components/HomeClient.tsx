@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isAddress } from "viem";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { ContentCard } from "@/components/ui/ContentCard";
 import { CreatorCard } from "@/components/ui/CreatorCard";
@@ -44,6 +45,14 @@ export function HomeClient() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = new URLSearchParams(window.location.search).get("ref")?.toLowerCase();
+    if (ref && isAddress(ref)) {
+      localStorage.setItem("lugha_referrer", ref);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/stats")

@@ -113,6 +113,21 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return jsonError(error.message, 500)
+
+    try {
+      const origin = new URL(request.url).origin
+      await fetch(`${origin}/api/admin/trigger-referral`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-secret': process.env.ADMIN_SECRET ?? '',
+        },
+        body: JSON.stringify({ userAddress: wallet }),
+      })
+    } catch {
+      // Referral reward failure must not block purchase recording
+    }
+
     return jsonOk(data, 'Purchase recorded', 201)
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : 'Unable to record purchase', 500)

@@ -85,8 +85,8 @@ export function TutorProfileClient({ id }: { id: string }) {
 
   return (
     <ErrorBoundary>
-      <main className="min-h-screen bg-off-white">
-        <NavBar />
+    <main className="min-h-screen bg-off-white">
+      <NavBar />
         <FadeIn>
           <section className="bg-forest px-5 py-14 text-cream lg:px-8">
             <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center">
@@ -154,6 +154,22 @@ export function TutorProfileClient({ id }: { id: string }) {
                       item={item}
                       purchaseIds={purchaseIds}
                       onAccess={handleAccess}
+                      onPurchaseSuccess={async () => {
+                        if (address) {
+                          await fetch('/api/purchases', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'x-wallet-address': address,
+                            },
+                            body: JSON.stringify({
+                              content_id: item.id,
+                              content_type: item.type,
+                              amount: item.price,
+                            }),
+                          })
+                        }
+                      }}
                     />
                   ))
                 )}
@@ -204,9 +220,9 @@ export function TutorProfileClient({ id }: { id: string }) {
             ) : null}
           </section>
         </FadeIn>
-        <Footer />
+      <Footer />
         <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
-      </main>
+    </main>
     </ErrorBoundary>
   );
 }

@@ -6,6 +6,7 @@ import { TutorGuard } from '@/components/TutorGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
+import { EarningsWithdraw } from '@/components/web3/EarningsWithdraw'
 import { shortenAddress } from '@/lib/minipay'
 import { useAuth } from '@/hooks/useAuth'
 import { EarningsSummary } from '@/types'
@@ -39,14 +40,12 @@ function EarningsClient() {
         <FadeIn>
           <h1 className="font-serif text-4xl font-black text-forest">Earnings</h1>
 
-          <div className="mt-8 rounded-2xl bg-forest p-8 text-cream">
-            <p className="text-sm text-cream/70">Total earnings</p>
-            <p className="mt-2 font-serif text-5xl font-black text-gold">{loading ? '—' : `${data?.total_earned ?? 0} cUSD`}</p>
-            <button type="button" className="mt-6 rounded-full bg-gold px-6 py-3 font-bold text-foreground">
-              Withdraw Earnings
-            </button>
-            <p className="mt-3 text-sm text-cream/70">Smart contract withdrawal coming soon 🔗</p>
+          <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-foreground/55">Total earnings (platform records)</p>
+            <p className="mt-2 font-serif text-4xl font-black text-forest">{loading ? '—' : `${data?.total_earned ?? 0} cUSD`}</p>
           </div>
+
+          <EarningsWithdraw />
 
           <section className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="font-serif text-xl font-black text-forest">Monthly breakdown</h2>

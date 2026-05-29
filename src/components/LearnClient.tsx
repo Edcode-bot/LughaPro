@@ -53,13 +53,18 @@ export function LearnClient() {
       setWalletOpen(true);
       return;
     }
-    if (isFreeContent(item) || purchaseIds.includes(item.id)) {
+    if (isFreeContent(item)) {
       await recordPurchase(item);
       if (item.file_url) window.open(item.file_url, "_blank");
       return;
     }
-    const ok = await recordPurchase(item);
-    if (ok && item.file_url) window.open(item.file_url, "_blank");
+    if (purchaseIds.includes(item.id) && item.file_url) {
+      window.open(item.file_url, "_blank");
+    }
+  }
+
+  async function handlePurchaseSuccess(item: ContentItem) {
+    await recordPurchase(item);
   }
 
   const sidebar = (
@@ -117,6 +122,7 @@ export function LearnClient() {
                       item={item}
                       purchaseIds={purchaseIds}
                       onAccess={(content) => void handleAccess(content)}
+                      onPurchaseSuccess={(content) => void handlePurchaseSuccess(content)}
                     />
                   ))}
                 </div>

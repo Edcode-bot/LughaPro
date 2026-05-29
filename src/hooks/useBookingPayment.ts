@@ -74,5 +74,5 @@ export function useBookingPayment({ bookingId, tutorAddress, amount, paymentMeth
 }
 
 export function getEscrowAddress() {
-  return CONTRACT_ADDRESSES.celo.BookingEscrow;
+  return CONTRACT_ADDRESSES.celo.LughaPayment;
 }

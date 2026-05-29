@@ -5,8 +5,12 @@ import { X } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { isAddress } from 'viem'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/hooks/useAuth'
+import { useRegisterReferral } from '@/hooks/useContracts'
+
+const REFERRER_STORAGE_KEY = 'lugha_referrer'
 import { saveStoredProfile } from '@/lib/profile-storage'
 import { Profile } from '@/types'
 
@@ -49,6 +53,7 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
   const router = useRouter()
   const { address, isConnected, isLoading, connectMetaMask, connectWalletConnect, connectBrowserWallet, setProfile } = useAuth()
   const { toast } = useToast()
+  const { registerReferral } = useRegisterReferral()
   const [step, setStep] = useState<Step>('connect')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +77,14 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
     if (open && isConnected && address) setStep('role')
   }, [open, isConnected, address])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ref = new URLSearchParams(window.location.search).get('ref')?.toLowerCase()
+    if (ref && isAddress(ref)) {
+      localStorage.setItem(REFERRER_STORAGE_KEY, ref)
+    }
+  }, [open])
+
   async function finish() {
     if (!address || !selectedRole) return
     setSubmitting(true)
@@ -91,6 +104,26 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
         saveStoredProfile(address, profile)
         setProfile(profile)
       }
+
+      const storedReferrer = localStorage.getItem(REFERRER_STORAGE_KEY)?.toLowerCase()
+      if (
+        storedReferrer &&
+        isAddress(storedReferrer) &&
+        storedReferrer !== address.toLowerCase()
+      ) {
+        try {
+          await registerReferral(storedReferrer as `0x${string}`)
+          localStorage.removeItem(REFERRER_STORAGE_KEY)
+          toast({
+            title: 'Referral registered!',
+            description: 'Your referrer will be rewarded when you make your first purchase.',
+            type: 'success',
+          })
+        } catch {
+          // User may already be referred — do not block onboarding
+        }
+      }
+
       toast({
         title: 'Welcome to LughaPro! 🎉',
         description: 'Complete your profile to get started.',

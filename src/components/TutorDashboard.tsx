@@ -6,6 +6,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { useAuth } from "@/hooks/useAuth";
+import { EarningsWithdraw } from "@/components/web3/EarningsWithdraw";
 import { shortenAddress } from "@/lib/minipay";
 import { EarningsSummary, TutorContentItem, TutorDashboardStats } from "@/types";
 
@@ -104,6 +105,8 @@ export function TutorDashboard() {
             <Link href="/publish?tab=book" className="rounded-full bg-gold px-6 py-3 font-bold text-foreground">New Book</Link>
             <Link href="/publish?tab=post" className="rounded-full border-2 border-forest px-6 py-3 font-bold text-forest">New Post</Link>
           </section>
+
+          <EarningsWithdraw compact />
 
           <section className="mt-8 rounded-2xl border border-dashed border-forest/20 bg-cream p-8 text-center">
             <p className="font-semibold text-forest">Detailed analytics coming soon</p>

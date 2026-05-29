@@ -1,12 +1,206 @@
-﻿"use client";
+﻿'use client'
+
+import { useReadContract, useWriteContract, usePublicClient } from 'wagmi'
+import { parseUnits, keccak256, stringToHex, encodePacked } from 'viem'
+import { useState } from 'react'
+import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_ABI, LUGHA_REFERRAL_ABI, LUGHA_CERTIFICATE_ABI, CUSD_ABI } from '@/lib/contracts'
+
+const CONTRACTS = CONTRACT_ADDRESSES.celo
+
+export function usePurchaseContent() {
+  const [step, setStep] = useState<'idle' | 'approving' | 'purchasing' | 'done' | 'error'>('idle')
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
+
+  async function purchaseContent(params: {
+    contentId: string
+    creatorAddress: `0x${string}`
+    priceUSD: number
+    buyerAddress: `0x${string}`
+  }) {
+    setStep('idle')
+    setErrorMsg(null)
+    try {
+      const amount = parseUnits(params.priceUSD.toString(), 18)
+      const contentIdBytes = keccak256(stringToHex(params.contentId))
+      const purchaseId = keccak256(encodePacked(
+        ['address', 'bytes32', 'uint256'],
+        [params.buyerAddress, contentIdBytes, BigInt(Date.now())]
+      ))
+
+      if (!publicClient) throw new Error('Wallet not ready')
+
+      const allowance = await publicClient.readContract({
+        address: CONTRACTS.cUSD,
+        abi: CUSD_ABI,
+        functionName: 'allowance',
+        args: [params.buyerAddress, CONTRACTS.LughaPayment],
+      })
+
+      if (allowance < amount) {
+        setStep('approving')
+        const approveTx = await writeContractAsync({
+          address: CONTRACTS.cUSD,
+          abi: CUSD_ABI,
+          functionName: 'approve',
+          args: [CONTRACTS.LughaPayment, amount],
+        })
+        setTxHash(approveTx)
+        await publicClient.waitForTransactionReceipt({ hash: approveTx })
+      }
+
+      setStep('purchasing')
+      const purchaseTx = await writeContractAsync({
+        address: CONTRACTS.LughaPayment,
+        abi: LUGHA_PAYMENT_ABI,
+        functionName: 'purchaseContent',
+        args: [purchaseId, params.creatorAddress, contentIdBytes, amount],
+      })
+      setTxHash(purchaseTx)
+      await publicClient.waitForTransactionReceipt({ hash: purchaseTx })
+      setStep('done')
+      return purchaseTx
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Transaction failed'
+      if (msg.includes('rejected') || msg.includes('denied')) {
+        setErrorMsg('You cancelled the transaction.')
+      } else if (msg.includes('insufficient') || msg.includes('balance')) {
+        setErrorMsg('Insufficient cUSD balance.')
+      } else {
+        setErrorMsg('Transaction failed. Please try again.')
+      }
+      setStep('error')
+      throw err
+    }
+  }
+
+  function reset() {
+    setStep('idle')
+    setTxHash(null)
+    setErrorMsg(null)
+  }
+
+  return { purchaseContent, step, txHash, errorMsg, reset }
+}
+
+export function useHasPurchased(buyerAddress: `0x${string}` | undefined, contentId: string) {
+  const contentIdBytes = contentId ? keccak256(stringToHex(contentId)) : ('0x' + '0'.repeat(64) as `0x${string}`)
+  return useReadContract({
+    address: CONTRACTS.LughaPayment,
+    abi: LUGHA_PAYMENT_ABI,
+    functionName: 'hasPurchased',
+    args: buyerAddress ? [buyerAddress, contentIdBytes] : undefined,
+    query: { enabled: !!buyerAddress && !!contentId }
+  })
+}
+
+export function useCusdBalance(address: `0x${string}` | undefined) {
+  return useReadContract({
+    address: CONTRACTS.cUSD,
+    abi: CUSD_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
+  })
+}
+
+export function useCreatorEarnings(creatorAddress: `0x${string}` | undefined) {
+  return useReadContract({
+    address: CONTRACTS.LughaPayment,
+    abi: LUGHA_PAYMENT_ABI,
+    functionName: 'getCreatorBalance',
+    args: creatorAddress ? [creatorAddress] : undefined,
+    query: { enabled: !!creatorAddress }
+  })
+}
+
+export function useWithdrawEarnings() {
+  const { writeContractAsync, isPending } = useWriteContract()
+  const publicClient = usePublicClient()
+
+  async function withdraw() {
+    const hash = await writeContractAsync({
+      address: CONTRACTS.LughaPayment,
+      abi: LUGHA_PAYMENT_ABI,
+      functionName: 'withdrawEarnings',
+      args: [],
+    })
+    if (publicClient) {
+      await publicClient.waitForTransactionReceipt({ hash })
+    }
+    return hash
+  }
+  return { withdraw, isPending }
+}
+
+export function useRegisterReferral() {
+  const { writeContractAsync, isPending } = useWriteContract()
+  const publicClient = usePublicClient()
+
+  async function registerReferral(referrerAddress: `0x${string}`) {
+    const hash = await writeContractAsync({
+      address: CONTRACTS.LughaReferral,
+      abi: LUGHA_REFERRAL_ABI,
+      functionName: 'registerReferral',
+      args: [referrerAddress],
+    })
+    if (publicClient) {
+      await publicClient.waitForTransactionReceipt({ hash })
+    }
+    return hash
+  }
+  return { registerReferral, isPending }
+}
+
+export function useReferralEarnings(address: `0x${string}` | undefined) {
+  return useReadContract({
+    address: CONTRACTS.LughaReferral,
+    abi: LUGHA_REFERRAL_ABI,
+    functionName: 'getEarnings',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
+  })
+}
+
+export function useHasBeenReferred(address: `0x${string}` | undefined) {
+  return useReadContract({
+    address: CONTRACTS.LughaReferral,
+    abi: LUGHA_REFERRAL_ABI,
+    functionName: 'hasBeenReferred',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
+  })
+}
+
+export function useStudentCertificates(studentAddress: `0x${string}` | undefined) {
+  return useReadContract({
+    address: CONTRACTS.LughaCertificate,
+    abi: LUGHA_CERTIFICATE_ABI,
+    functionName: 'getStudentCertificates',
+    args: studentAddress ? [studentAddress] : undefined,
+    query: { enabled: !!studentAddress }
+  })
+}
+
+export function useCertificateData(tokenId: bigint | undefined) {
+  return useReadContract({
+    address: CONTRACTS.LughaCertificate,
+    abi: LUGHA_CERTIFICATE_ABI,
+    functionName: 'getCertificate',
+    args: tokenId !== undefined ? [tokenId] : undefined,
+    query: { enabled: tokenId !== undefined }
+  })
+}
 
 export function useBookingEscrow() {
   return {
-    createBooking: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
-    confirmCompletion: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
-    cancelBooking: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
-    disputeBooking: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
-    approveToken: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
+    createBooking: async (..._args: unknown[]) => { throw new Error('Use usePurchaseContent instead') },
+    confirmCompletion: async (..._args: unknown[]) => { throw new Error('Use usePurchaseContent instead') },
+    cancelBooking: async (..._args: unknown[]) => { throw new Error('Not applicable') },
+    disputeBooking: async (..._args: unknown[]) => { throw new Error('Not applicable') },
+    approveToken: async (..._args: unknown[]) => { throw new Error('Use usePurchaseContent instead') },
     getBooking: (..._args: unknown[]) => null,
     isLoading: false,
     error: null,
@@ -14,17 +208,13 @@ export function useBookingEscrow() {
 }
 
 export function useCertificates(_address?: string) {
-  return {
-    data: [],
-    isLoading: false,
-    error: null,
-  }
+  return { data: [], isLoading: false, error: null }
 }
 
 export function useReferralRewards() {
   return {
-    registerCode: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
-    claimReward: async (..._args: unknown[]) => { throw new Error('Contracts not yet deployed') },
+    registerCode: async (..._args: unknown[]) => { throw new Error('Use useRegisterReferral instead') },
+    claimReward: async (..._args: unknown[]) => { throw new Error('Not applicable') },
     getEarnings: async () => BigInt(0),
     isLoading: false,
     error: null,
@@ -33,10 +223,10 @@ export function useReferralRewards() {
 
 export function useNativeOrCusdToken(paymentMethod: string) {
   return paymentMethod.toLowerCase() === 'cusd'
-    ? '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1'
+    ? CONTRACT_ADDRESSES.celo.cUSD
     : '0x0000000000000000000000000000000000000000'
 }
 
-export function toEscrowAmount(_price: string) {
-  return BigInt(0)
+export function toEscrowAmount(price: string) {
+  return parseUnits(price, 18)
 }
