@@ -23,10 +23,6 @@ export function useAuth() {
   const refreshProfile = useCallback(async () => {
     if (!address) return
     const stored = readStoredProfile(address)
-    if (stored?.onboarding_completed) {
-      setProfile(stored)
-      return
-    }
     try {
       const response = await fetch('/api/profiles/me', {
         headers: { 'x-wallet-address': address },
@@ -46,10 +42,12 @@ export function useAuth() {
       if (loginResult.data?.profile) {
         saveStoredProfile(address, loginResult.data.profile)
         setProfile(loginResult.data.profile)
+        return
       }
     } catch {
-      if (stored) setProfile(stored)
+      // ignore network errors
     }
+    if (stored) setProfile(stored)
   }, [address])
 
   useEffect(() => {

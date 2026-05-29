@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { FormEvent, useEffect, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
+import { FileUpload } from '@/components/ui/FileUpload'
 import { useAuth } from '@/hooks/useAuth'
 import { saveStoredProfile } from '@/lib/profile-storage'
 import { useToast } from '@/components/ui/Toast'
@@ -206,11 +207,22 @@ function OnboardingForm() {
             </>
           ) : null}
 
-          <Field label="Profile photo URL (optional)" value={avatarUrl} onChange={setAvatarUrl} />
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="Preview" className="mx-auto h-20 w-20 rounded-full object-cover" />
-          ) : null}
+          {role === 'tutor' ? (
+            <FileUpload
+              label="Profile photo (optional)"
+              kind="avatar"
+              previewUrl={avatarUrl}
+              onUploaded={setAvatarUrl}
+            />
+          ) : (
+            <>
+              <Field label="Profile photo URL (optional)" value={avatarUrl} onChange={setAvatarUrl} />
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="Preview" className="mx-auto h-20 w-20 rounded-full object-cover" />
+              ) : null}
+            </>
+          )}
 
           {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 

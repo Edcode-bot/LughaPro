@@ -51,13 +51,20 @@ export async function PATCH(request: Request) {
 
     if (error) return jsonError(error.message, 500)
 
-    if (auth.profile.role === 'tutor' && specialty) {
+    if (auth.profile.role === 'tutor') {
       await supabaseAdmin.from('tutors').upsert(
         {
           id: auth.profile.id,
           profile_id: auth.profile.id,
-          specialty: specialty.join(', '),
+          bio: body.bio ?? auth.profile.bio ?? null,
+          specialty: specialty?.length ? specialty.join(', ') : 'Kiswahili',
           languages: languages ?? auth.profile.languages,
+          location: body.country ?? auth.profile.country ?? '',
+          accepts_cusd: true,
+          rating: 0,
+          review_count: 0,
+          total_reviews: 0,
+          is_online: true,
         },
         { onConflict: 'id' },
       )

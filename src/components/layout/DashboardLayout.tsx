@@ -11,7 +11,7 @@ import {
   LogOut,
   PenSquare,
   Settings,
-  Users,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -35,10 +35,10 @@ const studentLinks = [
 
 const tutorLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/publish", label: "Upload Content", icon: PenSquare },
   { href: "/my-content", label: "My Content", icon: FileText },
-  { href: "/publish", label: "Publish", icon: PenSquare },
   { href: "/earnings", label: "Earnings", icon: BarChart3 },
-  { href: "/students", label: "My Students", icon: Users },
+  { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

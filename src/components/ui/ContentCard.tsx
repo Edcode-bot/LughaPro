@@ -106,7 +106,11 @@ export function ContentCard({
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold text-forest">
             {contentTypeLabel(item.type)}
           </span>
-          {onChainPurchased && !free ? (
+          {hasPurchased && !free ? (
+            <span className="absolute right-3 top-3 rounded-full bg-forest px-2.5 py-1 text-[10px] font-bold text-white">
+              Owned
+            </span>
+          ) : onChainPurchased && !free ? (
             <span className="absolute right-3 top-3 rounded-full bg-jade/90 px-2.5 py-1 text-[10px] font-bold text-white">
               On-chain ✓
             </span>

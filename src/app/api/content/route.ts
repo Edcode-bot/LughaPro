@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       let booksQuery = supabaseAdmin
         .from('books')
         .select('*')
+        .eq('published', true)
         .order('created_at', { ascending: false })
 
       if (authorId) booksQuery = booksQuery.eq('author_id', authorId)
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
       let postsQuery = supabaseAdmin
         .from('posts')
         .select('*')
+        .eq('published', true)
         .order('created_at', { ascending: false })
 
       if (authorId) postsQuery = postsQuery.eq('author_id', authorId)

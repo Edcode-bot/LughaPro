@@ -59,6 +59,25 @@ export async function POST(request: Request) {
       return fallbackProfile(walletAddress, role)
     }
 
+    if (role === 'tutor' && profile) {
+      await supabaseAdmin.from('tutors').upsert(
+        {
+          id: profile.id,
+          profile_id: profile.id,
+          specialty: 'Kiswahili',
+          accepts_cusd: true,
+          rating: 0,
+          review_count: 0,
+          total_reviews: 0,
+          is_verified: false,
+          is_featured: false,
+          is_online: true,
+          location: '',
+        },
+        { onConflict: 'id' },
+      )
+    }
+
     return NextResponse.json({
       data: { profile, isNew: true },
       error: null,
