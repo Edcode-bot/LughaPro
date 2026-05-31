@@ -10,6 +10,21 @@ function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   })
 }
 
+async function ensureTutorRow(profileId: string) {
+  await supabaseAdmin.from('tutors').upsert(
+    {
+      id: profileId,
+      profile_id: profileId,
+      hourly_rate: 0,
+      rating: 0,
+      accepts_cusd: true,
+      accepts_fiat: true,
+      is_online: true,
+    },
+    { onConflict: 'id' },
+  )
+}
+
 export async function POST(request: Request) {
   let walletAddress = ''
   let role: 'student' | 'tutor' = 'student'
@@ -35,8 +50,11 @@ export async function POST(request: Request) {
     }
 
     if (existingProfile) {
+      if (role === 'tutor') {
+        await ensureTutorRow(existingProfile.id)
+      }
       return NextResponse.json({
-        data: { profile: existingProfile, isNew: false },
+        data: { profile: { ...existingProfile, role: role === 'tutor' ? 'tutor' : existingProfile.role }, isNew: false },
         error: null,
       })
     }
@@ -44,13 +62,16 @@ export async function POST(request: Request) {
     const id = crypto.randomUUID()
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id,
-        full_name: `Wallet ${walletAddress.slice(0, 6)}`,
-        role,
-        wallet_address: walletAddress,
-        onboarding_completed: false,
-      })
+      .upsert(
+        {
+          id,
+          full_name: `Wallet ${walletAddress.slice(0, 6)}`,
+          role,
+          wallet_address: walletAddress,
+          onboarding_completed: false,
+        },
+        { onConflict: 'wallet_address' },
+      )
       .select('*')
       .single()
 
@@ -60,22 +81,7 @@ export async function POST(request: Request) {
     }
 
     if (role === 'tutor' && profile) {
-      await supabaseAdmin.from('tutors').upsert(
-        {
-          id: profile.id,
-          profile_id: profile.id,
-          specialty: 'Kiswahili',
-          accepts_cusd: true,
-          rating: 0,
-          review_count: 0,
-          total_reviews: 0,
-          is_verified: false,
-          is_featured: false,
-          is_online: true,
-          location: '',
-        },
-        { onConflict: 'id' },
-      )
+      await ensureTutorRow(profile.id)
     }
 
     return NextResponse.json({

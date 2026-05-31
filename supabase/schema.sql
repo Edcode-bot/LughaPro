@@ -64,6 +64,3 @@ alter table books add column if not exists published boolean default true;
 alter table posts add column if not exists published boolean default true;
 alter table purchases add column if not exists progress_status text default 'not_started';
 alter table purchases add column if not exists progress_percent numeric default 0;
-
--- Supabase Storage: create public bucket "lugha-content" in Dashboard → Storage
--- Policies: authenticated uploads via service role API; public read for marketplace files

@@ -81,7 +81,7 @@ export function TutorsClient() {
             </div>
           ) : tutors.length === 0 ? (
             <div className="mt-8 rounded-2xl bg-white p-12 text-center shadow-sm">
-              <p className="text-lg font-bold text-forest">No creators yet — be the first to join!</p>
+              <p className="text-lg font-bold text-forest">No creators yet — be the first!</p>
               <Link href="/publish" className="mt-4 inline-flex rounded-full bg-gold px-6 py-3 font-bold text-foreground">
                 Become a Creator
               </Link>
@@ -100,30 +100,22 @@ export function TutorsClient() {
   );
 }
 
-function CreatorListCard({ tutor }: { tutor: TutorWithProfile & { content_count?: number } }) {
+function CreatorListCard({ tutor }: { tutor: TutorWithProfile }) {
   const name = tutor.profile?.full_name ?? "Creator";
   const country = tutor.profile?.country ?? tutor.location ?? "East Africa";
-  const avatar = tutor.profile?.avatar_url;
-  const wallet = tutor.profile?.wallet_address;
   const specialties: string[] = Array.isArray(tutor.specialty)
     ? tutor.specialty
     : typeof tutor.specialty === "string" && tutor.specialty
       ? [tutor.specialty]
       : [];
   const topCreator = Number(tutor.rating) >= 4.8;
-  const contentCount = tutor.content_count ?? 0;
 
   return (
     <article className="flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md md:flex-row md:items-center">
       <div className="relative shrink-0">
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt={name} className="h-20 w-20 rounded-full object-cover" />
-        ) : (
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-forest text-2xl font-bold text-white">
-            {initials(name)}
-          </div>
-        )}
+        <div className="grid h-20 w-20 place-items-center rounded-full bg-forest text-2xl font-bold text-white">
+          {initials(name)}
+        </div>
         {tutor.is_online ? <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-gold" /> : null}
       </div>
       <div className="min-w-0 flex-1">
@@ -142,8 +134,7 @@ function CreatorListCard({ tutor }: { tutor: TutorWithProfile & { content_count?
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <StarRating rating={Number(tutor.rating ?? 0)} size={14} />
-          <span className="text-sm text-foreground/55">{contentCount} published item{contentCount === 1 ? '' : 's'}</span>
-          {wallet ? <span className="font-mono text-xs text-foreground/45">{wallet.slice(0, 6)}…{wallet.slice(-4)}</span> : null}
+          <span className="text-sm text-foreground/55">{(tutor.book_count ?? 0) + (tutor.post_count ?? 0)} content items</span>
         </div>
         <div className="mt-2 flex gap-2 text-xs font-semibold text-foreground/55">
           {tutor.accepts_cusd ? <span>cUSD</span> : null}

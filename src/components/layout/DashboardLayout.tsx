@@ -11,15 +11,16 @@ import {
   LogOut,
   PenSquare,
   Settings,
-  TrendingUp,
+  Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { NavBar } from "@/components/ui/NavBar";
 import { useAuth } from "@/hooks/useAuth";
+import { readLughaRole } from "@/lib/profile-storage";
 import { initials } from "@/lib/content";
 import { shortenAddress } from "@/lib/minipay";
 import { UserRole } from "@/types";
@@ -35,10 +36,10 @@ const studentLinks = [
 
 const tutorLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/publish", label: "Upload Content", icon: PenSquare },
   { href: "/my-content", label: "My Content", icon: FileText },
+  { href: "/publish", label: "Publish", icon: PenSquare },
   { href: "/earnings", label: "Earnings", icon: BarChart3 },
-  { href: "/analytics", label: "Analytics", icon: TrendingUp },
+  { href: "/students", label: "My Students", icon: Users },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -52,7 +53,13 @@ export function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { displayName, address, role: authRole, disconnect } = useAuth();
-  const role = roleOverride ?? authRole;
+  const [storedRole, setStoredRole] = useState<UserRole | null>(null);
+
+  useEffect(() => {
+    setStoredRole(readLughaRole());
+  }, [authRole]);
+
+  const role = roleOverride ?? storedRole ?? authRole;
   const links = role === "tutor" || role === "admin" ? tutorLinks : studentLinks;
 
   return (

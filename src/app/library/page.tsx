@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { AuthGuard } from '@/components/AuthGuard'
-import { StudentGuard } from '@/components/StudentGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
@@ -13,9 +12,7 @@ import { LibraryProgressStatus } from '@/types'
 export default function LibraryPage() {
   return (
     <AuthGuard>
-      <StudentGuard>
-        <LibraryClient />
-      </StudentGuard>
+      <LibraryClient />
     </AuthGuard>
   )
 }

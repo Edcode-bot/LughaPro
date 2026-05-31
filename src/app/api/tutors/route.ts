@@ -1,30 +1,8 @@
 import { NextRequest } from 'next/server'
 import { jsonError, jsonOk } from '@/lib/api'
-import { prioritizeRealTutors } from '@/lib/tutors'
 import { supabaseAdmin } from '@/lib/supabase'
 
-async function attachContentCounts<T extends { profile_id?: string; id?: string }>(tutors: T[]) {
-  const ids = tutors.map((t) => t.profile_id ?? t.id).filter(Boolean) as string[]
-  if (!ids.length) return tutors.map((t) => ({ ...t, content_count: 0 }))
-
-  const [booksRes, postsRes] = await Promise.all([
-    supabaseAdmin.from('books').select('author_id').in('author_id', ids),
-    supabaseAdmin.from('posts').select('author_id').in('author_id', ids),
-  ])
-
-  const counts = new Map<string, number>()
-  for (const row of booksRes.data ?? []) {
-    counts.set(row.author_id, (counts.get(row.author_id) ?? 0) + 1)
-  }
-  for (const row of postsRes.data ?? []) {
-    counts.set(row.author_id, (counts.get(row.author_id) ?? 0) + 1)
-  }
-
-  return tutors.map((tutor) => ({
-    ...tutor,
-    content_count: counts.get(tutor.profile_id ?? tutor.id ?? '') ?? 0,
-  }))
-}
+const SEEDED_WALLET_PREFIX = '0x000000000000000000000000000000000000000'
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
@@ -38,7 +16,8 @@ export async function GET(request: NextRequest) {
 
   let query = supabaseAdmin
     .from('tutors')
-    .select('*, profile:profiles(*)', { count: 'exact' })
+    .select('*, profile:profiles!inner(*)', { count: 'exact' })
+    .not('profiles.wallet_address', 'like', `${SEEDED_WALLET_PREFIX}%`)
 
   if (filter === 'online') query = query.eq('is_online', true)
   if (filter === 'cusd') query = query.eq('accepts_cusd', true)
@@ -51,18 +30,20 @@ export async function GET(request: NextRequest) {
 
   const { data, error, count } = await query.order('rating', { ascending: false }).range(from, to)
 
-  if (error) return jsonError('Unable to load tutors', 500)
+  if (error) {
+    const fallback = await supabaseAdmin
+      .from('tutors')
+      .select('*, profile:profiles(*)')
+      .order('rating', { ascending: false })
+      .range(from, to)
 
-  const withProfiles = (data ?? []).filter(
-    (row) => row.profile?.role === 'tutor' && row.profile?.onboarding_completed === true,
-  )
+    const items = (fallback.data ?? []).filter((tutor) => {
+      const wallet = (tutor.profile as { wallet_address?: string } | null)?.wallet_address?.toLowerCase()
+      return wallet && !wallet.startsWith(SEEDED_WALLET_PREFIX)
+    })
 
-  const prioritized = prioritizeRealTutors(withProfiles)
-  const withCounts = await attachContentCounts(prioritized)
-  const pageItems = withCounts.slice(0, limit)
+    return jsonOk({ items, page, limit, total: items.length }, 'Tutors loaded')
+  }
 
-  return jsonOk(
-    { items: pageItems, page, limit, total: prioritized.length || count || 0 },
-    'Tutors loaded',
-  )
+  return jsonOk({ items: data ?? [], page, limit, total: count ?? 0 }, 'Tutors loaded')
 }

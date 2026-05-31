@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected, walletConnect } from 'wagmi/connectors'
-import { clearStoredProfile, readStoredProfile, saveStoredProfile } from '@/lib/profile-storage'
+import { clearStoredProfile, readLughaProfile, readLughaRole, readStoredProfile, saveStoredProfile } from '@/lib/profile-storage'
 import { Profile, UserRole } from '@/types'
 
 export function useAuth() {
@@ -23,6 +23,10 @@ export function useAuth() {
   const refreshProfile = useCallback(async () => {
     if (!address) return
     const stored = readStoredProfile(address)
+    if (stored?.onboarding_completed) {
+      setProfile(stored)
+      return
+    }
     try {
       const response = await fetch('/api/profiles/me', {
         headers: { 'x-wallet-address': address },
@@ -42,12 +46,10 @@ export function useAuth() {
       if (loginResult.data?.profile) {
         saveStoredProfile(address, loginResult.data.profile)
         setProfile(loginResult.data.profile)
-        return
       }
     } catch {
-      // ignore network errors
+      if (stored) setProfile(stored)
     }
-    if (stored) setProfile(stored)
   }, [address])
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function useAuth() {
     wagmiDisconnect()
   }
 
-  const role: UserRole = profile?.role ?? 'student'
+  const role: UserRole = readLughaRole() ?? profile?.role ?? readLughaProfile()?.role ?? 'student'
   const displayName = profile?.full_name ?? (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Guest')
 
   return {

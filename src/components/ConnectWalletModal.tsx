@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRegisterReferral } from '@/hooks/useContracts'
 
 const REFERRER_STORAGE_KEY = 'lugha_referrer'
-import { saveStoredProfile } from '@/lib/profile-storage'
+import { saveStoredProfile, saveLughaProfile, saveLughaRole } from '@/lib/profile-storage'
 import { Profile } from '@/types'
 
 type Step = 'connect' | 'role'
@@ -102,7 +102,9 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
       }
       if (profile && address) {
         saveStoredProfile(address, profile)
-        setProfile(profile)
+        saveLughaRole(selectedRole)
+        saveLughaProfile({ ...profile, role: selectedRole })
+        setProfile({ ...profile, role: selectedRole })
       }
 
       const storedReferrer = localStorage.getItem(REFERRER_STORAGE_KEY)?.toLowerCase()

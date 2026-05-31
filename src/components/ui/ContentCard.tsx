@@ -85,12 +85,6 @@ export function ContentCard({
     }
   }
 
-  async function handlePurchaseSuccess(txHash: `0x${string}`) {
-    setLocalPurchased(true);
-    await onPurchaseSuccess?.(item);
-    void txHash;
-  }
-
   return (
     <>
       <article className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
@@ -106,11 +100,7 @@ export function ContentCard({
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold text-forest">
             {contentTypeLabel(item.type)}
           </span>
-          {hasPurchased && !free ? (
-            <span className="absolute right-3 top-3 rounded-full bg-forest px-2.5 py-1 text-[10px] font-bold text-white">
-              Owned
-            </span>
-          ) : onChainPurchased && !free ? (
+          {onChainPurchased && !free ? (
             <span className="absolute right-3 top-3 rounded-full bg-jade/90 px-2.5 py-1 text-[10px] font-bold text-white">
               On-chain ✓
             </span>
@@ -177,10 +167,12 @@ export function ContentCard({
               <PurchaseFlow
                 contentId={item.id}
                 contentTitle={item.title}
+                contentType={item.type}
                 creatorAddress={creatorWallet}
                 priceUSD={Number(item.price)}
-                onSuccess={handlePurchaseSuccess}
-                onClose={() => {
+                onSuccess={() => {
+                  setLocalPurchased(true);
+                  void onPurchaseSuccess?.(item);
                   setPurchaseOpen(false);
                   onAccess?.(item);
                 }}

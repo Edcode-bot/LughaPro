@@ -5,7 +5,6 @@ import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
-import { FileUpload } from '@/components/ui/FileUpload'
 import { useAuth } from '@/hooks/useAuth'
 import { saveStoredProfile } from '@/lib/profile-storage'
 import { useToast } from '@/components/ui/Toast'
@@ -25,8 +24,6 @@ function SettingsClient() {
   const [bio, setBio] = useState('')
   const [country, setCountry] = useState('')
   const [languages, setLanguages] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
-  const [specialty, setSpecialty] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -35,7 +32,6 @@ function SettingsClient() {
     setBio(profile.bio ?? '')
     setCountry(profile.country ?? '')
     setLanguages((profile.languages ?? []).join(', '))
-    setAvatarUrl(profile.avatar_url ?? '')
   }, [profile])
 
   async function save() {
@@ -52,8 +48,6 @@ function SettingsClient() {
         bio,
         country,
         languages,
-        avatar_url: avatarUrl || null,
-        specialty: role === 'tutor' ? specialty.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
       }),
     })
     const result = await response.json()
@@ -70,11 +64,10 @@ function SettingsClient() {
   }
 
   return (
-    <DashboardLayout role={role === 'tutor' ? 'tutor' : 'student'}>
+    <DashboardLayout>
       <ErrorBoundary>
         <FadeIn>
           <h1 className="font-serif text-4xl font-black text-forest">Settings</h1>
-          <p className="mt-2 text-sm text-foreground/65">Edit your profile and creator details.</p>
           <form
             className="mt-8 max-w-2xl space-y-4 rounded-2xl bg-white p-6 shadow-sm"
             onSubmit={(event) => {
@@ -86,14 +79,6 @@ function SettingsClient() {
             <TextArea label="Bio" value={bio} onChange={setBio} />
             <Field label="Country" value={country} onChange={setCountry} />
             <Field label="Languages (comma separated)" value={languages} onChange={setLanguages} />
-            {role === 'tutor' ? (
-              <>
-                <Field label="Specialties (comma separated)" value={specialty} onChange={setSpecialty} />
-                <FileUpload label="Profile photo" kind="avatar" previewUrl={avatarUrl} onUploaded={setAvatarUrl} />
-              </>
-            ) : (
-              <Field label="Avatar URL" value={avatarUrl} onChange={setAvatarUrl} />
-            )}
             <label className="grid gap-2 text-sm font-semibold text-forest">
               Wallet address
               <input value={address ?? ''} readOnly className="rounded-xl bg-off-white px-4 py-3 font-mono text-sm text-foreground/60" />

@@ -155,20 +155,7 @@ export function TutorProfileClient({ id }: { id: string }) {
                       purchaseIds={purchaseIds}
                       onAccess={handleAccess}
                       onPurchaseSuccess={async () => {
-                        if (address) {
-                          await fetch('/api/purchases', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'x-wallet-address': address,
-                            },
-                            body: JSON.stringify({
-                              content_id: item.id,
-                              content_type: item.type,
-                              amount: item.price,
-                            }),
-                          })
-                        }
+                        await recordPurchase(item)
                       }}
                     />
                   ))

@@ -2,11 +2,11 @@
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState, ChangeEvent } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
-import { FileUpload } from '@/components/ui/FileUpload'
 import { useAuth } from '@/hooks/useAuth'
-import { saveStoredProfile } from '@/lib/profile-storage'
+import { readLughaRole, saveStoredProfile } from '@/lib/profile-storage'
+import { uploadToSupabaseStorage } from '@/lib/upload'
 import { useToast } from '@/components/ui/Toast'
 
 const countries = [
@@ -43,7 +43,8 @@ export default function OnboardingPage() {
 
 function OnboardingForm() {
   const router = useRouter()
-  const { address, role, profile, setProfile, isLoading } = useAuth()
+  const { address, role: authRole, profile, setProfile, isLoading } = useAuth()
+  const role = readLughaRole() ?? authRole
   const { toast } = useToast()
 
   useEffect(() => {
@@ -55,10 +56,31 @@ function OnboardingForm() {
   const [country, setCountry] = useState(profile?.country ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? '')
+  const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url ?? '')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [specialties, setSpecialties] = useState<string[]>([])
   const [languages, setLanguages] = useState<string[]>(profile?.languages ?? ['Kiswahili'])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  async function handleAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    setError(null)
+    try {
+      const reader = new FileReader()
+      reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
+      reader.readAsDataURL(file)
+      const publicUrl = await uploadToSupabaseStorage(file, 'covers')
+      setAvatarUrl(publicUrl)
+      setAvatarPreview(publicUrl)
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Avatar upload failed')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -207,22 +229,15 @@ function OnboardingForm() {
             </>
           ) : null}
 
-          {role === 'tutor' ? (
-            <FileUpload
-              label="Profile photo (optional)"
-              kind="avatar"
-              previewUrl={avatarUrl}
-              onUploaded={setAvatarUrl}
-            />
-          ) : (
-            <>
-              <Field label="Profile photo URL (optional)" value={avatarUrl} onChange={setAvatarUrl} />
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="Preview" className="mx-auto h-20 w-20 rounded-full object-cover" />
-              ) : null}
-            </>
-          )}
+          <label className="grid gap-2 text-sm font-semibold text-forest">
+            Profile photo (optional)
+            <input type="file" accept="image/*" onChange={(e) => void handleAvatarUpload(e)} />
+          </label>
+          {avatarPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarPreview} alt="Preview" className="mx-auto h-20 w-20 rounded-full object-cover" />
+          ) : null}
+          {uploadingAvatar ? <p className="text-xs text-foreground/55">Uploading photo...</p> : null}
 
           {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 

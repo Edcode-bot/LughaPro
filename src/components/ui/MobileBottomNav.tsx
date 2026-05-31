@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 const studentTabs = [
-  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/", label: "Home", icon: Home },
   { href: "/learn", label: "Learn", icon: BookOpen },
   { href: "/library", label: "Library", icon: Library },
   { href: "/wallet", label: "Wallet", icon: Wallet },

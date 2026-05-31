@@ -1,191 +1,177 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle2, ExternalLink, Loader2, XCircle } from 'lucide-react'
-import Link from 'next/link'
-import { useEffect } from 'react'
-import { formatUnits, parseUnits } from 'viem'
-import { useAccount } from 'wagmi'
-import { useCusdBalance, usePurchaseContent } from '@/hooks/useContracts'
-import { celoscanTx, truncateTx } from '@/lib/celoscan'
-
-type PurchaseFlowProps = {
-  contentId: string
-  contentTitle: string
-  creatorAddress: `0x${string}`
-  priceUSD: number
-  onSuccess: (txHash: `0x${string}`) => void | Promise<void>
-  onClose?: () => void
-}
+import { useState } from 'react'
+import { parseUnits, keccak256, stringToHex, encodePacked } from 'viem'
+import { useWriteContract, useReadContract, useAccount, usePublicClient } from 'wagmi'
+import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_ABI, CUSD_ABI } from '@/lib/contracts'
+import { ContentType } from '@/types'
 
 export function PurchaseFlow({
   contentId,
   contentTitle,
+  contentType = 'book',
   creatorAddress,
   priceUSD,
   onSuccess,
-  onClose,
-}: PurchaseFlowProps) {
+}: {
+  contentId: string
+  contentTitle: string
+  contentType?: ContentType
+  creatorAddress: `0x${string}`
+  priceUSD: number
+  onSuccess: () => void
+}) {
   const { address } = useAccount()
-  const { data: balance } = useCusdBalance(address)
-  const { purchaseContent, step, txHash, errorMsg, reset } = usePurchaseContent()
+  const publicClient = usePublicClient()
+  const [step, setStep] = useState<'idle' | 'approving' | 'purchasing' | 'done' | 'error'>('idle')
+  const [txHash, setTxHash] = useState<string>('')
+  const [error, setError] = useState<string>('')
+  const { writeContractAsync } = useWriteContract()
 
-  const priceWei = parseUnits(priceUSD.toString(), 18)
-  const insufficient = balance !== undefined && balance < priceWei
+  const { data: balance } = useReadContract({
+    address: CONTRACT_ADDRESSES.celo.cUSD,
+    abi: CUSD_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  })
 
-  useEffect(() => {
-    reset()
-  }, [contentId, reset])
+  const amount = parseUnits(priceUSD.toString(), 18)
+  const hasEnoughBalance = balance !== undefined && balance >= amount
 
   async function handlePurchase() {
-    if (!address || insufficient) return
+    if (!address) return
+    setError('')
+
     try {
-      const hash = await purchaseContent({
-        contentId,
-        creatorAddress,
-        priceUSD,
-        buyerAddress: address,
+      const contentIdBytes = keccak256(stringToHex(contentId)) as `0x${string}`
+      const purchaseId = keccak256(encodePacked(
+        ['address', 'bytes32', 'uint256'],
+        [address, contentIdBytes, BigInt(Date.now())],
+      )) as `0x${string}`
+
+      setStep('approving')
+      const approveHash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.celo.cUSD,
+        abi: CUSD_ABI,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESSES.celo.LughaPayment, amount],
       })
-      if (hash) await onSuccess(hash)
-    } catch {
-      // error state handled in hook
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash })
+      }
+
+      setStep('purchasing')
+      const hash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.celo.LughaPayment,
+        abi: LUGHA_PAYMENT_ABI,
+        functionName: 'purchaseContent',
+        args: [purchaseId, creatorAddress, contentIdBytes, amount],
+      })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash })
+      }
+
+      setTxHash(hash)
+      setStep('done')
+
+      await fetch('/api/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+        },
+        body: JSON.stringify({
+          content_id: contentId,
+          content_type: contentType,
+          amount: priceUSD,
+          payment_method: 'cusd',
+          tx_hash: hash,
+        }),
+      })
+
+      onSuccess()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled')) {
+        setError('Transaction cancelled.')
+      } else if (msg.includes('insufficient') || msg.includes('balance')) {
+        setError('Not enough cUSD in your wallet.')
+      } else {
+        setError('Transaction failed. Please try again.')
+      }
+      setStep('error')
     }
   }
 
-  const balanceDisplay =
-    balance !== undefined ? Number(formatUnits(balance, 18)).toFixed(2) : '—'
+  if (step === 'done') {
+    return (
+      <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+        <div className="text-4xl">✅</div>
+        <h3 className="mt-3 font-serif text-xl font-black text-forest">Access Granted!</h3>
+        <p className="mt-1 text-sm text-foreground/60">{contentTitle}</p>
+        {txHash ? (
+          <a
+            href={`https://celoscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 block text-xs text-forest underline"
+          >
+            View on Celoscan ↗
+          </a>
+        ) : null}
+        <button type="button" onClick={onSuccess} className="mt-4 w-full rounded-full bg-gold py-3 font-black text-foreground">
+          Read Now
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm">
-      <p className="text-sm font-semibold text-foreground/55">Unlock content</p>
-      <h3 className="mt-1 font-serif text-xl font-black text-forest">{contentTitle}</h3>
-      <p className="mt-1 text-sm text-foreground/60">
-        Balance: <span className="font-bold text-forest">{balanceDisplay} cUSD</span>
-      </p>
+      <h3 className="font-serif text-xl font-black text-forest">Get Access</h3>
+      <p className="mt-1 text-sm text-foreground/60">{contentTitle}</p>
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-off-white p-4">
+        <span className="font-semibold">Price</span>
+        <span className="font-black text-forest">{priceUSD} cUSD</span>
+      </div>
 
-      <AnimatePresence mode="wait">
-        {insufficient && step === 'idle' ? (
-          <motion.div
-            key="insufficient"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-6 rounded-xl bg-red-50 p-4 text-center"
-          >
-            <XCircle className="mx-auto h-8 w-8 text-red-600" />
-            <p className="mt-2 font-bold text-red-700">Insufficient cUSD balance</p>
-            <p className="mt-1 text-sm text-red-600/80">
-              You need ${priceUSD.toFixed(2)} cUSD to unlock this content.
-            </p>
-            <a
-              href="https://minipay.opera.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex rounded-full bg-gold px-5 py-2 text-sm font-bold text-foreground"
-            >
-              Add Funds via MiniPay
-            </a>
-          </motion.div>
-        ) : null}
+      {!hasEnoughBalance && balance !== undefined ? (
+        <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          Insufficient cUSD balance.{' '}
+          <a href="https://minipay.opera.com" className="underline" target="_blank" rel="noreferrer">
+            Add funds →
+          </a>
+        </p>
+      ) : null}
 
-        {step === 'idle' && !insufficient ? (
-          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-6">
-            <button
-              type="button"
-              onClick={() => void handlePurchase()}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-gold font-bold text-foreground hover:bg-[#e6ac00]"
-            >
-              Get Access — ${priceUSD.toFixed(2)} cUSD
-            </button>
-          </motion.div>
-        ) : null}
+      {step === 'approving' ? (
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream p-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+          <span className="text-sm font-semibold">Approving cUSD spend... confirm in wallet</span>
+        </div>
+      ) : null}
 
-        {(step === 'approving' || step === 'purchasing') && (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-6 text-center"
-          >
-            <Loader2 className="mx-auto h-10 w-10 animate-spin text-forest" />
-            <p className="mt-4 font-bold text-forest">
-              {step === 'approving'
-                ? 'Approving cUSD spend... Please confirm in wallet'
-                : 'Processing payment on Celo...'}
-            </p>
-            {txHash ? (
-              <a
-                href={celoscanTx(txHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-jade"
-              >
-                {truncateTx(txHash)}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            ) : null}
-          </motion.div>
-        )}
+      {step === 'purchasing' ? (
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream p-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+          <span className="text-sm font-semibold">Processing payment on Celo...</span>
+        </div>
+      ) : null}
 
-        {step === 'done' && (
-          <motion.div
-            key="done"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mt-6 text-center"
-          >
-            <CheckCircle2 className="mx-auto h-12 w-12 text-jade" />
-            <p className="mt-3 font-bold text-forest">Access granted!</p>
-            {txHash ? (
-              <a
-                href={celoscanTx(txHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-jade"
-              >
-                View on Celoscan
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            ) : null}
-            {onClose ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-4 rounded-full bg-forest px-6 py-2.5 text-sm font-bold text-white"
-              >
-                Read Now
-              </button>
-            ) : null}
-          </motion.div>
-        )}
+      {step === 'error' ? (
+        <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>
+      ) : null}
 
-        {step === 'error' && (
-          <motion.div
-            key="error"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-6 rounded-xl bg-red-50 p-4 text-center"
-          >
-            <XCircle className="mx-auto h-8 w-8 text-red-600" />
-            <p className="mt-2 text-sm font-semibold text-red-700">{errorMsg ?? 'Transaction failed'}</p>
-            <button
-              type="button"
-              onClick={() => {
-                reset()
-                void handlePurchase()
-              }}
-              className="mt-4 rounded-full bg-gold px-5 py-2 text-sm font-bold text-foreground"
-            >
-              Try Again
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-wide text-foreground/40">
-        Powered by <span className="text-forest">Celo</span> blockchain
-      </p>
+      <button
+        type="button"
+        onClick={() => void handlePurchase()}
+        disabled={!hasEnoughBalance || step === 'approving' || step === 'purchasing'}
+        className="mt-4 w-full rounded-full bg-gold py-3 font-black text-foreground disabled:opacity-50"
+      >
+        {step === 'idle' || step === 'error' ? `Pay ${priceUSD} cUSD` : 'Processing...'}
+      </button>
+      <p className="mt-2 text-center text-xs text-foreground/40">Powered by Celo blockchain</p>
     </div>
   )
 }
