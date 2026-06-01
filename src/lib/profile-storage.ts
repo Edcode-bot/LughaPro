@@ -44,9 +44,6 @@ export function saveStoredProfile(wallet: string, profile: Partial<Profile>) {
   const merged = { ...existing, ...profile, wallet_address: wallet.toLowerCase() } as Profile
   window.localStorage.setItem(profileKey(wallet), JSON.stringify(merged))
   saveLughaProfile(merged)
-  if (merged.role === 'tutor' || merged.role === 'student') {
-    saveLughaRole(merged.role)
-  }
 }
 
 export function readStoredProfile(wallet: string): Profile | null {

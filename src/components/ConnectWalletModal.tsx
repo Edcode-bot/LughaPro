@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRegisterReferral } from '@/hooks/useContracts'
 
 const REFERRER_STORAGE_KEY = 'lugha_referrer'
-import { saveStoredProfile, saveLughaProfile, saveLughaRole } from '@/lib/profile-storage'
+import { saveStoredProfile } from '@/lib/profile-storage'
 import { Profile } from '@/types'
 
 type Step = 'connect' | 'role'
@@ -101,10 +101,12 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
         throw new Error(result.error ?? 'Unable to create wallet profile')
       }
       if (profile && address) {
-        saveStoredProfile(address, profile)
-        saveLughaRole(selectedRole)
-        saveLughaProfile({ ...profile, role: selectedRole })
-        setProfile({ ...profile, role: selectedRole })
+        const profileWithRole = { ...profile, role: selectedRole }
+        localStorage.setItem('lugha_role', selectedRole)
+        localStorage.setItem('lugha_profile', JSON.stringify(profileWithRole))
+        console.log('Role saved:', selectedRole)
+        saveStoredProfile(address, profileWithRole)
+        setProfile(profileWithRole)
       }
 
       const storedReferrer = localStorage.getItem(REFERRER_STORAGE_KEY)?.toLowerCase()

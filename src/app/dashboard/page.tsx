@@ -14,20 +14,13 @@ export default function DashboardPage() {
 }
 
 function DashboardRouter() {
-  const [role, setRole] = useState<'student' | 'tutor' | null>(null)
+  const [role, setRole] = useState<string>('student')
 
   useEffect(() => {
-    const stored = localStorage.getItem('lugha_role')
-    setRole(stored === 'tutor' ? 'tutor' : 'student')
+    const saved = localStorage.getItem('lugha_role')
+    console.log('Role read from storage:', saved)
+    if (saved) setRole(saved)
   }, [])
-
-  if (role === null) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-off-white">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-forest border-t-transparent" />
-      </div>
-    )
-  }
 
   if (role === 'tutor') return <TutorDashboard />
   return <StudentDashboard />

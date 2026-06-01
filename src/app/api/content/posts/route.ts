@@ -4,7 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function POST(request: Request) {
   const auth = await getWalletAuthenticatedProfile(request)
   if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
-  if (auth.profile.role !== 'tutor' && auth.profile.role !== 'admin') {
+  const roleHeader = request.headers.get('x-lugha-role')
+  const isCreator =
+    auth.profile.role === 'tutor' ||
+    auth.profile.role === 'admin' ||
+    roleHeader === 'tutor'
+  if (!isCreator) {
     return jsonError('Only creators can publish posts', 403)
   }
 

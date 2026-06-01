@@ -53,8 +53,15 @@ export async function POST(request: Request) {
       if (role === 'tutor') {
         await ensureTutorRow(existingProfile.id)
       }
+      const { data: updatedProfile } = await supabaseAdmin
+        .from('profiles')
+        .update({ role })
+        .eq('id', existingProfile.id)
+        .select('*')
+        .single()
+
       return NextResponse.json({
-        data: { profile: { ...existingProfile, role: role === 'tutor' ? 'tutor' : existingProfile.role }, isNew: false },
+        data: { profile: updatedProfile ?? { ...existingProfile, role }, isNew: false },
         error: null,
       })
     }
