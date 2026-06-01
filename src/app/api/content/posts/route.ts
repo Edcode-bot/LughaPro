@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   const auth = await getWalletAuthenticatedProfile(request)
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabase = createAdminClient()
     const body = await request.json() as {
       title?: string
       content?: string
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       return jsonError('Title and content are required', 422)
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('posts')
       .insert({
         author_id: auth.profile.id,

@@ -64,3 +64,91 @@ alter table books add column if not exists published boolean default true;
 alter table posts add column if not exists published boolean default true;
 alter table purchases add column if not exists progress_status text default 'not_started';
 alter table purchases add column if not exists progress_percent numeric default 0;
+
+-- ---------------------------------------------------------------------------
+-- Row Level Security (wallet auth validated server-side; permissive policies)
+-- Run in Supabase SQL editor, or: POST /api/admin/apply-rls-policies
+-- ---------------------------------------------------------------------------
+
+alter table public.books enable row level security;
+alter table public.posts enable row level security;
+alter table public.purchases enable row level security;
+alter table public.profiles enable row level security;
+alter table public.tutors enable row level security;
+
+drop policy if exists "Creators can insert books" on public.books;
+create policy "Creators can insert books" on public.books for insert with check (true);
+
+drop policy if exists "Anyone can insert posts" on public.posts;
+create policy "Anyone can insert posts" on public.posts for insert with check (true);
+
+drop policy if exists "Anyone can insert purchases" on public.purchases;
+create policy "Anyone can insert purchases" on public.purchases for insert with check (true);
+
+drop policy if exists "Anyone can update books" on public.books;
+create policy "Anyone can update books" on public.books for update using (true);
+
+drop policy if exists "Anyone can update posts" on public.posts;
+create policy "Anyone can update posts" on public.posts for update using (true);
+
+drop policy if exists "Anyone can read purchases" on public.purchases;
+create policy "Anyone can read purchases" on public.purchases for select using (true);
+
+drop policy if exists "Anyone can insert profiles" on public.profiles;
+create policy "Anyone can insert profiles" on public.profiles for insert with check (true);
+
+drop policy if exists "Anyone can update profiles" on public.profiles;
+create policy "Anyone can update profiles" on public.profiles for update using (true);
+
+drop policy if exists "Anyone can insert tutors" on public.tutors;
+create policy "Anyone can insert tutors" on public.tutors for insert with check (true);
+
+drop policy if exists "Anyone can update tutors" on public.tutors;
+create policy "Anyone can update tutors" on public.tutors for update using (true);
+
+-- Callable from API (service role) after function is created in SQL editor once
+create or replace function public.apply_lugha_rls_policies()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  drop policy if exists "Creators can insert books" on public.books;
+  create policy "Creators can insert books" on public.books for insert with check (true);
+
+  drop policy if exists "Anyone can insert posts" on public.posts;
+  create policy "Anyone can insert posts" on public.posts for insert with check (true);
+
+  drop policy if exists "Anyone can insert purchases" on public.purchases;
+  create policy "Anyone can insert purchases" on public.purchases for insert with check (true);
+
+  drop policy if exists "Anyone can update books" on public.books;
+  create policy "Anyone can update books" on public.books for update using (true);
+
+  drop policy if exists "Anyone can update posts" on public.posts;
+  create policy "Anyone can update posts" on public.posts for update using (true);
+
+  drop policy if exists "Anyone can read purchases" on public.purchases;
+  create policy "Anyone can read purchases" on public.purchases for select using (true);
+
+  drop policy if exists "Anyone can insert profiles" on public.profiles;
+  create policy "Anyone can insert profiles" on public.profiles for insert with check (true);
+
+  drop policy if exists "Anyone can update profiles" on public.profiles;
+  create policy "Anyone can update profiles" on public.profiles for update using (true);
+
+  drop policy if exists "Anyone can insert tutors" on public.tutors;
+  create policy "Anyone can insert tutors" on public.tutors for insert with check (true);
+
+  drop policy if exists "Anyone can update tutors" on public.tutors;
+  create policy "Anyone can update tutors" on public.tutors for update using (true);
+
+  return jsonb_build_object('ok', true, 'message', 'RLS policies applied');
+exception
+  when others then
+    return jsonb_build_object('ok', false, 'error', SQLERRM);
+end;
+$$;
+
+grant execute on function public.apply_lugha_rls_policies() to service_role;

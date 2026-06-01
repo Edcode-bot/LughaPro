@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import Image from "next/image";
 
 type AvatarProps = {
   src?: string;
@@ -36,11 +35,11 @@ export function Avatar({ src, name, size = "md", online = false, className }: Av
   return (
     <div className={clsx("relative inline-flex shrink-0", className)}>
       {src ? (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={src}
           alt={name}
-          width={96}
-          height={96}
+          loading="lazy"
           className={clsx("rounded-full object-cover ring-2 ring-cream", sizes[size])}
         />
       ) : (

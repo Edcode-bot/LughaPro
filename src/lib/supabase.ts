@@ -86,13 +86,14 @@ export const createServerSupabaseClient = async (): Promise<any> => {
   }
 }
 
-export const supabaseAdmin = (() => {
+/** Service-role client — bypasses RLS. Use in all server API routes for writes. */
+export function createAdminClient() {
   if (!hasValidSupabaseConfig(serviceRoleKey)) {
     logSupabaseConfigError()
     return createEmptyClient() as unknown as ReturnType<typeof createClient>
   }
   try {
-    return createClient(supabaseUrl!, serviceRoleKey!, {
+    return createClient(supabaseUrl!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -102,4 +103,6 @@ export const supabaseAdmin = (() => {
     console.error('Failed to create Supabase admin client', error)
     return createEmptyClient() as unknown as ReturnType<typeof createClient>
   }
-})()
+}
+
+export const supabaseAdmin = createAdminClient()

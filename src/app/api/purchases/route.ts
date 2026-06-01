@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server'
 import { jsonError, jsonOk, getWalletAddress } from '@/lib/api'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 import { Book, ContentItem, ContentType, Post, Profile, PurchaseWithContent } from '@/types'
 
-async function loadContent(contentId: string, contentType: ContentType): Promise<ContentItem | null> {
+async function loadContent(
+  supabase: ReturnType<typeof createAdminClient>,
+  contentId: string,
+  contentType: ContentType,
+): Promise<ContentItem | null> {
   if (contentType === 'post') {
-    const { data } = await supabaseAdmin
+    const { data } = await supabase
       .from('posts')
       .select('*, author:profiles(*)')
       .eq('id', contentId)
@@ -30,7 +34,7 @@ async function loadContent(contentId: string, contentType: ContentType): Promise
     }
   }
 
-  const { data } = await supabaseAdmin
+  const { data } = await supabase
     .from('books')
     .select('*, author:profiles(*)')
     .eq('id', contentId)
@@ -59,7 +63,8 @@ export async function GET(request: NextRequest) {
   if (!wallet) return jsonError('user wallet is required', 422)
 
   try {
-    const { data: purchases, error } = await supabaseAdmin
+    const supabase = createAdminClient()
+    const { data: purchases, error } = await supabase
       .from('purchases')
       .select('*')
       .eq('user_wallet', wallet)
@@ -69,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     const items: PurchaseWithContent[] = []
     for (const purchase of purchases ?? []) {
-      const content = await loadContent(purchase.content_id, purchase.content_type as ContentType)
+      const content = await loadContent(supabase, purchase.content_id, purchase.content_type as ContentType)
       if (content) items.push({ ...purchase, content })
     }
 
@@ -95,7 +100,8 @@ export async function POST(request: Request) {
       return jsonError('content_id and content_type are required', 422)
     }
 
-    const { data, error } = await supabaseAdmin
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
       .from('purchases')
       .upsert(
         {

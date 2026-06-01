@@ -88,12 +88,17 @@ export function ContentCard({
   return (
     <>
       <article className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-        <div className={`relative ${compact ? "h-32" : "h-[150px]"} overflow-hidden`}>
+        <div className="relative overflow-hidden rounded-t-2xl">
           {item.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.cover_image_url} alt={item.title} className="h-full w-full object-cover" />
+            <img
+              src={item.cover_image_url}
+              alt={item.title}
+              loading="lazy"
+              className="h-40 w-full object-cover rounded-t-2xl"
+            />
           ) : (
-            <div className={`flex h-full items-center justify-center ${contentCoverStyle(item.type)}`}>
+            <div className={`flex h-40 w-full items-center justify-center rounded-t-2xl ${contentCoverStyle(item.type)}`}>
               <span className="text-4xl">{contentCoverEmoji(item.type)}</span>
             </div>
           )}

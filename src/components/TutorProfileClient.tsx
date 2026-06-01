@@ -90,9 +90,19 @@ export function TutorProfileClient({ id }: { id: string }) {
         <FadeIn>
           <section className="bg-forest px-5 py-14 text-cream lg:px-8">
             <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center">
-              <div className="grid h-24 w-24 place-items-center rounded-full bg-gold text-3xl font-black text-foreground">
-                {initials(name)}
-              </div>
+              {tutor.profile?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={tutor.profile.avatar_url}
+                  alt={name}
+                  loading="lazy"
+                  className="h-24 w-24 shrink-0 rounded-full object-cover ring-2 ring-gold/40"
+                />
+              ) : (
+                <div className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-gold text-3xl font-black text-foreground">
+                  {initials(name)}
+                </div>
+              )}
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {tutor.is_verified ? <span className="rounded-full bg-jade/20 px-3 py-1 text-xs font-bold">✓ Verified</span> : null}

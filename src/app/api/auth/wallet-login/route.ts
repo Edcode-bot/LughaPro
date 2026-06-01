@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 
 type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' }
 
@@ -10,8 +10,8 @@ function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   })
 }
 
-async function ensureTutorRow(profileId: string) {
-  await supabaseAdmin.from('tutors').upsert(
+async function ensureTutorRow(supabase: ReturnType<typeof createAdminClient>, profileId: string) {
+  await supabase.from('tutors').upsert(
     {
       id: profileId,
       profile_id: profileId,
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
   let role: 'student' | 'tutor' = 'student'
 
   try {
+    const supabase = createAdminClient()
     const body = await request.json() as WalletLoginBody
     walletAddress = body.wallet_address?.toLowerCase() ?? ''
     role = body.role === 'tutor' ? 'tutor' : 'student'
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ data: null, error: 'wallet_address is required' }, { status: 422 })
     }
 
-    const { data: existingProfile, error: lookupError } = await supabaseAdmin
+    const { data: existingProfile, error: lookupError } = await supabase
       .from('profiles')
       .select('*')
       .eq('wallet_address', walletAddress)
@@ -51,9 +52,9 @@ export async function POST(request: Request) {
 
     if (existingProfile) {
       if (role === 'tutor') {
-        await ensureTutorRow(existingProfile.id)
+        await ensureTutorRow(supabase, existingProfile.id)
       }
-      const { data: updatedProfile } = await supabaseAdmin
+      const { data: updatedProfile } = await supabase
         .from('profiles')
         .update({ role })
         .eq('id', existingProfile.id)
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const id = crypto.randomUUID()
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .upsert(
         {
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     if (role === 'tutor' && profile) {
-      await ensureTutorRow(profile.id)
+      await ensureTutorRow(supabase, profile.id)
     }
 
     return NextResponse.json({

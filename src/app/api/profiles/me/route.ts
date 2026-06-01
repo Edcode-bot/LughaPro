@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 
 export async function GET(request: Request) {
   const auth = await getWalletAuthenticatedProfile(request)
@@ -42,7 +42,8 @@ export async function PATCH(request: Request) {
     if (body.avatar_url !== undefined) updates.avatar_url = body.avatar_url
     if (body.onboarding_completed !== undefined) updates.onboarding_completed = body.onboarding_completed
 
-    const { data, error } = await supabaseAdmin
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('wallet_address', auth.profile.wallet_address)
@@ -52,7 +53,7 @@ export async function PATCH(request: Request) {
     if (error) return jsonError(error.message, 500)
 
     if (auth.profile.role === 'tutor' && specialty) {
-      await supabaseAdmin.from('tutors').upsert(
+      await supabase.from('tutors').upsert(
         {
           id: auth.profile.id,
           profile_id: auth.profile.id,

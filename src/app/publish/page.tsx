@@ -10,6 +10,14 @@ import { FadeIn } from '@/components/ui/FadeIn'
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'All'] as const
 
+function CoverPreview({ src }: { src: string }) {
+  return (
+    <div className="relative mt-2 w-full overflow-hidden rounded-xl" style={{ aspectRatio: '16/9' }}>
+      <img src={src} alt="Cover preview" className="h-full w-full object-cover" />
+    </div>
+  )
+}
+
 async function uploadFile(file: File, bucket: string): Promise<string> {
   const supabase = createBrowserSupabaseClient()
   const fileName = `${Date.now()}-${file.name.replace(/[^a-z0-9.-]/gi, '-')}`
@@ -348,9 +356,7 @@ function PublishClient() {
                 Cover image
                 <input type="file" accept="image/*" onChange={(e) => onImagePick(e, 'book')} />
               </label>
-              {bookCoverPreview ? (
-                <img src={bookCoverPreview} alt="Cover preview" className="h-40 w-full rounded-xl object-cover" />
-              ) : null}
+              {bookCoverPreview ? <CoverPreview src={bookCoverPreview} /> : null}
 
               <div>
                 <p className="text-sm font-semibold text-forest">Book file</p>
@@ -417,9 +423,7 @@ function PublishClient() {
                 Cover image
                 <input type="file" accept="image/*" onChange={(e) => onImagePick(e, 'post')} />
               </label>
-              {postCoverPreview ? (
-                <img src={postCoverPreview} alt="Cover preview" className="h-40 w-full rounded-xl object-cover" />
-              ) : null}
+              {postCoverPreview ? <CoverPreview src={postCoverPreview} /> : null}
 
               <label className="flex items-center gap-2 text-sm font-semibold text-forest">
                 <input
