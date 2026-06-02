@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { jsonError, jsonOk, getWalletAddress } from '@/lib/api'
+import { getBookOwnerId } from '@/lib/books'
 import { createServiceRoleClient } from '@/lib/supabase-service-role'
 import { Book, ContentItem, ContentType, Post, Profile, PurchaseWithContent } from '@/types'
 
@@ -35,13 +36,11 @@ async function loadContent(
     }
   }
 
-  const { data } = await supabase
-    .from('books')
-    .select('*, author:profiles(*)')
-    .eq('id', contentId)
-    .maybeSingle()
+  const { data } = await supabase.from('books').select('*').eq('id', contentId).maybeSingle()
   if (!data) return null
-  const book = data as Book & { author?: Profile }
+  const book = data as Book
+  const ownerId = getBookOwnerId(book)
+  const { data: author } = await supabase.from('profiles').select('*').eq('id', ownerId).maybeSingle()
   return {
     id: book.id,
     type: book.content_type === 'lesson' ? 'lesson' : 'book',
@@ -53,8 +52,8 @@ async function loadContent(
     file_url: book.file_url,
     tags: book.tags,
     language: book.language,
-    author_id: book.author_id,
-    author: book.author,
+    author_id: getBookOwnerId(book),
+    author: author as Profile | undefined,
     created_at: book.created_at,
   }
 }

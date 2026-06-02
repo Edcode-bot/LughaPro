@@ -58,6 +58,20 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedRole, setSelectedRole] = useState<'student' | 'tutor' | null>(null)
+  const [storedName, setStoredName] = useState('')
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('lugha_profile')
+      if (raw) {
+        const profile = JSON.parse(raw) as { full_name?: string }
+        if (profile.full_name) setStoredName(profile.full_name)
+      }
+    } catch {
+      setStoredName('')
+    }
+  }, [open, isConnected])
 
   const connectors = {
     connectMetaMask,
@@ -175,7 +189,9 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                 </>
               ) : (
                 <>
-                  <h2 className="mt-6 font-serif text-3xl font-black text-forest">How will you use LughaPro?</h2>
+                  <h2 className="mt-6 font-serif text-3xl font-black text-forest">
+                    {storedName ? `Welcome back, ${storedName}` : 'How will you use LughaPro?'}
+                  </h2>
                   <p className="mt-2 text-sm text-foreground/65">Choose your path to continue</p>
                 </>
               )}
@@ -237,9 +253,16 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                   type="button"
                   disabled={!selectedRole || submitting}
                   onClick={() => void finish()}
-                  className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-gold font-bold text-foreground transition hover:bg-[#e6ac00] disabled:opacity-50"
+                  className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-gold font-bold text-foreground transition hover:bg-[#e6ac00] disabled:opacity-50"
                 >
-                  {submitting ? 'Continuing...' : 'Continue'}
+                  {submitting ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/30 border-t-foreground" />
+                      Continuing...
+                    </>
+                  ) : (
+                    'Continue'
+                  )}
                 </button>
               </>
             )}

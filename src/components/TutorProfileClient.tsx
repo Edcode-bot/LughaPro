@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BackButton } from "@/components/ui/BackButton";
 import { ContentCard } from "@/components/ui/ContentCard";
 import { ContentPreview } from "@/components/ContentPreview";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -87,8 +88,11 @@ export function TutorProfileClient({ id }: { id: string }) {
     <ErrorBoundary>
     <main className="min-h-screen bg-off-white">
       <NavBar />
+        <FadeIn className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <BackButton href="/tutors" />
+        </FadeIn>
         <FadeIn>
-          <section className="bg-forest px-5 py-14 text-cream lg:px-8">
+          <section className="bg-forest px-4 py-14 text-cream sm:px-6 lg:px-8">
             <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center">
               {tutor.profile?.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -159,15 +163,7 @@ export function TutorProfileClient({ id }: { id: string }) {
                   <p className="text-foreground/60">No books published yet.</p>
                 ) : (
                   books.map((item) => (
-                    <ContentCard
-                      key={item.id}
-                      item={item}
-                      purchaseIds={purchaseIds}
-                      onAccess={handleAccess}
-                      onPurchaseSuccess={async () => {
-                        await recordPurchase(item)
-                      }}
-                    />
+                    <ContentCard key={item.id} item={item} />
                   ))
                 )}
               </div>

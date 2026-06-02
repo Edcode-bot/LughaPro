@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",
   description: 'Book live Kiswahili sessions with verified African tutors. Pay with crypto or card.',
   icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon.png' }],
+    shortcut: '/favicon.svg',
     apple: '/favicon.png',
   },
   other: {

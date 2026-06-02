@@ -139,7 +139,7 @@ export function PurchaseFlow({
       {!hasEnoughBalance && balance !== undefined ? (
         <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-600">
           Insufficient cUSD balance.{' '}
-          <a href="https://minipay.opera.com" className="underline" target="_blank" rel="noreferrer">
+          <a href="https://minipay.opera.com" className="underline" target="_blank" rel="noopener noreferrer">
             Add funds →
           </a>
         </p>

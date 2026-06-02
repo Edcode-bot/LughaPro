@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   try {
     const [{ data: books }, { data: posts }] = await Promise.all([
-      supabaseAdmin.from('books').select('id, title').eq('author_id', auth.profile.id),
+      supabaseAdmin.from('books').select('id, title').eq('tutor_id', auth.profile.id),
       supabaseAdmin.from('posts').select('id, title').eq('author_id', auth.profile.id),
     ])
 

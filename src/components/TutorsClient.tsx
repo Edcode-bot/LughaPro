@@ -46,7 +46,7 @@ export function TutorsClient() {
     <ErrorBoundary>
       <main className="min-h-screen bg-off-white">
         <NavBar />
-        <FadeIn className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+        <FadeIn className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <h1 className="font-serif text-4xl font-black text-forest md:text-5xl">Find Your Kiswahili Teacher</h1>
           <form onSubmit={submit} className="relative mt-6 max-w-2xl">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/40" />
@@ -74,8 +74,8 @@ export function TutorsClient() {
           </div>
 
           {loading ? (
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, index) => (
+            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
                 <SkeletonCard key={index} />
               ))}
             </div>
@@ -87,7 +87,7 @@ export function TutorsClient() {
               </Link>
             </div>
           ) : (
-            <div className="mt-8 grid gap-6">
+            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {tutors.map((tutor) => (
                 <CreatorListCard key={tutor.id} tutor={tutor} />
               ))}

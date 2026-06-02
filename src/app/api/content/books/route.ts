@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('books')
       .insert({
-        author_id: auth.profile.id,
+        tutor_id: auth.profile.id,
         title: body.title.trim(),
         description: body.description ?? null,
         level: body.level ?? 'All',

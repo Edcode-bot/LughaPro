@@ -85,7 +85,7 @@ export function HomeClient() {
         <NavBar />
 
         <FadeIn>
-          <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
+          <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
             <div>
               <span className="inline-flex rounded-full bg-cream px-4 py-2 text-sm font-bold text-forest">
                 🌍 Africa&apos;s #1 Kiswahili Platform
@@ -116,7 +116,7 @@ export function HomeClient() {
               </p>
             </div>
 
-            <div className="relative hidden h-[420px] lg:block">
+            <div className="relative mt-8 h-64 sm:h-80 lg:mt-0 lg:block lg:h-[420px]">
               <div className="absolute inset-0 rounded-3xl bg-forest/5" />
               {previewCards.map((card, index) => (
                 <motion.div
@@ -139,7 +139,7 @@ export function HomeClient() {
         </FadeIn>
 
         <section className="bg-cream py-12">
-          <div className="mx-auto grid max-w-6xl gap-8 px-5 md:grid-cols-4">
+          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 sm:gap-8 sm:px-6 md:grid-cols-4 lg:px-8">
             {[
               { value: platformStats ? formatCount(platformStats.creators) : "—", label: "Creators" },
               { value: platformStats ? formatCount(platformStats.content) : "—", label: "Content Items" },
@@ -180,7 +180,7 @@ export function HomeClient() {
               </Link>
             </div>
             {loadingContent ? (
-              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <SkeletonCard key={index} />
                 ))}

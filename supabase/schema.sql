@@ -2,7 +2,7 @@
 
 create table if not exists books (
   id uuid primary key default gen_random_uuid(),
-  author_id uuid references profiles(id) on delete cascade,
+  tutor_id uuid references profiles(id) on delete cascade,
   title text not null,
   description text,
   level text default 'All',
@@ -152,3 +152,9 @@ end;
 $$;
 
 grant execute on function public.apply_lugha_rls_policies() to service_role;
+
+-- Books ownership column (DB may use tutor_id; optional author_id alias)
+alter table public.books add column if not exists tutor_id uuid references profiles(id) on delete cascade;
+alter table public.books add column if not exists author_id uuid;
+update public.books set tutor_id = author_id where tutor_id is null and author_id is not null;
+update public.books set author_id = tutor_id where author_id is null and tutor_id is not null;

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { jsonError, jsonOk } from '@/lib/api'
+import { getBookOwnerId } from '@/lib/books'
 import { supabaseAdmin } from '@/lib/supabase'
 import { Book, ContentItem, ContentType, Post, Profile } from '@/types'
 
@@ -26,9 +27,11 @@ async function hydrate(contentId: string, contentType: ContentType): Promise<Con
     }
   }
 
-  const { data } = await supabaseAdmin.from('books').select('*, author:profiles(*)').eq('id', contentId).maybeSingle()
+  const { data } = await supabaseAdmin.from('books').select('*').eq('id', contentId).maybeSingle()
   if (!data) return null
-  const book = data as Book & { author?: Profile }
+  const book = data as Book
+  const ownerId = getBookOwnerId(book)
+  const { data: author } = await supabaseAdmin.from('profiles').select('*').eq('id', ownerId).maybeSingle()
   return {
     id: book.id,
     type: book.content_type === 'lesson' ? 'lesson' : 'book',
@@ -40,8 +43,8 @@ async function hydrate(contentId: string, contentType: ContentType): Promise<Con
     file_url: book.file_url,
     tags: book.tags,
     language: book.language,
-    author_id: book.author_id,
-    author: book.author,
+    author_id: getBookOwnerId(book),
+    author: author as Profile | undefined,
     created_at: book.created_at,
   }
 }

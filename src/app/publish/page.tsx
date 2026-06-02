@@ -399,9 +399,16 @@ function PublishClient() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50"
               >
-                {submitting ? 'Publishing...' : 'Publish Book'}
+                {submitting ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/30 border-t-foreground" />
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish Book'
+                )}
               </button>
             </form>
           ) : (
@@ -453,9 +460,16 @@ function PublishClient() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50"
               >
-                {submitting ? 'Publishing...' : 'Publish Post'}
+                {submitting ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/30 border-t-foreground" />
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish Post'
+                )}
               </button>
             </form>
           )}

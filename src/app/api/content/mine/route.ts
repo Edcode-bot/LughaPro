@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
+import { getBookOwnerId } from '@/lib/books'
 import { supabaseAdmin } from '@/lib/supabase'
-import { Book, ContentItem, ContentType, Post, TutorContentItem } from '@/types'
+import { Book, ContentType, Post, TutorContentItem } from '@/types'
 
 function mapBook(book: Book): TutorContentItem {
   return {
@@ -14,7 +15,7 @@ function mapBook(book: Book): TutorContentItem {
     file_url: book.file_url,
     tags: book.tags,
     language: book.language,
-    author_id: book.author_id,
+    author_id: getBookOwnerId(book),
     created_at: book.created_at,
     published: book.published ?? true,
     view_count: 0,
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 
   try {
     const [{ data: books }, { data: posts }] = await Promise.all([
-      supabaseAdmin.from('books').select('*').eq('author_id', auth.profile.id).order('created_at', { ascending: false }),
+      supabaseAdmin.from('books').select('*').eq('tutor_id', auth.profile.id).order('created_at', { ascending: false }),
       supabaseAdmin.from('posts').select('*').eq('author_id', auth.profile.id).order('created_at', { ascending: false }),
     ])
 

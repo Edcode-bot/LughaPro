@@ -102,7 +102,7 @@ export function StudentDashboard() {
             </div>
             <div className="mt-4 grid gap-6 md:grid-cols-3">
               {recommended.map((item) => (
-                <ContentCard key={item.id} item={item} purchased={purchaseIds.includes(item.id)} purchaseIds={purchaseIds} />
+                <ContentCard key={item.id} item={item} />
               ))}
             </div>
           </section>

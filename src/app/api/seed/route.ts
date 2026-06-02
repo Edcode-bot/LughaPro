@@ -33,10 +33,10 @@ export async function GET(request: Request) {
   ]
 
   const books = [
-    { id: 'b1111111-1111-1111-1111-111111111111', author_id: '11111111-1111-1111-1111-111111111111', title: 'Business Kiswahili Essentials', description: 'Professional vocabulary for meetings, emails, and negotiations.', level: 'B2', price: 12, content_type: 'book', language: 'Kiswahili', tags: ['business'] },
-    { id: 'b2222222-2222-2222-2222-222222222222', author_id: '22222222-2222-2222-2222-222222222222', title: 'Kiswahili for Beginners', description: 'A gentle introduction with dialogues and pronunciation drills.', level: 'A1', price: 0, content_type: 'book', language: 'Kiswahili', tags: ['beginner'] },
-    { id: 'b3333333-3333-3333-3333-333333333333', author_id: '33333333-3333-3333-3333-333333333333', title: 'Proverbs & Culture', description: 'Methali, stories, and cultural context from across East Africa.', level: 'B1', price: 8, content_type: 'book', language: 'Bilingual', tags: ['culture'] },
-    { id: 'b4444444-4444-4444-4444-444444444444', author_id: '55555555-5555-5555-5555-555555555555', title: 'Coastal Dialect Masterclass', description: 'Video lessons on Zanzibar Kiswahili pronunciation and idioms.', level: 'C1', price: 15, content_type: 'lesson', language: 'Kiswahili', tags: ['dialect', 'video'] },
+    { id: 'b1111111-1111-1111-1111-111111111111', tutor_id: '11111111-1111-1111-1111-111111111111', title: 'Business Kiswahili Essentials', description: 'Professional vocabulary for meetings, emails, and negotiations.', level: 'B2', price: 12, content_type: 'book', language: 'Kiswahili', tags: ['business'] },
+    { id: 'b2222222-2222-2222-2222-222222222222', tutor_id: '22222222-2222-2222-2222-222222222222', title: 'Kiswahili for Beginners', description: 'A gentle introduction with dialogues and pronunciation drills.', level: 'A1', price: 0, content_type: 'book', language: 'Kiswahili', tags: ['beginner'] },
+    { id: 'b3333333-3333-3333-3333-333333333333', tutor_id: '33333333-3333-3333-3333-333333333333', title: 'Proverbs & Culture', description: 'Methali, stories, and cultural context from across East Africa.', level: 'B1', price: 8, content_type: 'book', language: 'Bilingual', tags: ['culture'] },
+    { id: 'b4444444-4444-4444-4444-444444444444', tutor_id: '55555555-5555-5555-5555-555555555555', title: 'Coastal Dialect Masterclass', description: 'Video lessons on Zanzibar Kiswahili pronunciation and idioms.', level: 'C1', price: 15, content_type: 'lesson', language: 'Kiswahili', tags: ['dialect', 'video'] },
   ]
 
   const posts = [

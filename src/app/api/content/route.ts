@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { jsonError, jsonOk } from '@/lib/api'
+import { getBookOwnerId } from '@/lib/books'
 import { supabaseAdmin } from '@/lib/supabase'
 import { Book, ContentItem, ContentType, Post, Profile } from '@/types'
 
@@ -16,7 +17,7 @@ function bookToContent(book: Book & { author?: Profile }): ContentItem {
     file_url: book.file_url,
     tags: book.tags,
     language: book.language,
-    author_id: book.author_id,
+    author_id: getBookOwnerId(book),
     author: book.author,
     created_at: book.created_at,
     popularity: 0,
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
         .eq('published', true)
         .order('created_at', { ascending: false })
 
-      if (authorId) booksQuery = booksQuery.eq('author_id', authorId)
+      if (authorId) booksQuery = booksQuery.eq('tutor_id', authorId)
       if (type === 'book') booksQuery = booksQuery.neq('content_type', 'lesson')
       if (type === 'lesson') booksQuery = booksQuery.eq('content_type', 'lesson')
       if (level && level !== 'all') booksQuery = booksQuery.eq('level', level)

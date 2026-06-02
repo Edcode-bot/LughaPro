@@ -98,7 +98,8 @@ export type Tutor = {
 
 export type Book = {
   id: string
-  author_id: string
+  tutor_id?: string
+  author_id?: string
   title: string
   description: string | null
   level: string | null
