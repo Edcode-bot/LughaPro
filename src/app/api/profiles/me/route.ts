@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
-import { createAdminClient } from '@/lib/supabase'
+import { createServiceRoleClient } from '@/lib/supabase-service-role'
 
 export async function GET(request: Request) {
   const auth = await getWalletAuthenticatedProfile(request)
@@ -12,6 +12,7 @@ export async function PATCH(request: Request) {
   if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
 
   try {
+    const supabase = createServiceRoleClient()
     const body = await request.json() as {
       full_name?: string
       bio?: string
@@ -42,7 +43,6 @@ export async function PATCH(request: Request) {
     if (body.avatar_url !== undefined) updates.avatar_url = body.avatar_url
     if (body.onboarding_completed !== undefined) updates.onboarding_completed = body.onboarding_completed
 
-    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)

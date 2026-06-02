@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { jsonError, jsonOk, getWalletAddress } from '@/lib/api'
-import { createAdminClient } from '@/lib/supabase'
+import { createServiceRoleClient } from '@/lib/supabase-service-role'
 import { Book, ContentItem, ContentType, Post, Profile, PurchaseWithContent } from '@/types'
 
 async function loadContent(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: SupabaseClient,
   contentId: string,
   contentType: ContentType,
 ): Promise<ContentItem | null> {
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
   if (!wallet) return jsonError('user wallet is required', 422)
 
   try {
-    const supabase = createAdminClient()
+    const supabase = createServiceRoleClient()
     const { data: purchases, error } = await supabase
       .from('purchases')
       .select('*')
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
   if (!wallet) return jsonError('wallet_address header is required', 401)
 
   try {
+    const supabase = createServiceRoleClient()
     const body = await request.json() as {
       content_id?: string
       content_type?: ContentType
@@ -100,7 +102,6 @@ export async function POST(request: Request) {
       return jsonError('content_id and content_type are required', 422)
     }
 
-    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('purchases')
       .upsert(

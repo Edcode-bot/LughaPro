@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createServiceRoleClient } from '@/lib/supabase-service-role'
 
 type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' }
 
@@ -10,7 +11,7 @@ function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   })
 }
 
-async function ensureTutorRow(supabase: ReturnType<typeof createAdminClient>, profileId: string) {
+async function ensureTutorRow(supabase: SupabaseClient, profileId: string) {
   await supabase.from('tutors').upsert(
     {
       id: profileId,
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   let role: 'student' | 'tutor' = 'student'
 
   try {
-    const supabase = createAdminClient()
+    const supabase = createServiceRoleClient()
     const body = await request.json() as WalletLoginBody
     walletAddress = body.wallet_address?.toLowerCase() ?? ''
     role = body.role === 'tutor' ? 'tutor' : 'student'

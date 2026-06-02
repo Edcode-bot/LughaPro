@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
-import { createAdminClient } from '@/lib/supabase'
+import { createServiceRoleClient } from '@/lib/supabase-service-role'
 
 export async function POST(request: Request) {
   const auth = await getWalletAuthenticatedProfile(request)
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = createAdminClient()
+    const supabase = createServiceRoleClient()
     const body = await request.json() as {
       title?: string
       content?: string
