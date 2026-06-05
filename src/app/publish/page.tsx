@@ -79,8 +79,10 @@ function PublishGate() {
   return <PublishClient />
 }
 
+const CONTENT_CATEGORIES = ['language', 'music', 'arts', 'literature', 'video', 'other'] as const
+
 function PublishClient() {
-  const [tab, setTab] = useState<'book' | 'post'>('book')
+  const [tab, setTab] = useState<'book' | 'post' | 'video' | 'music'>('book')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -110,6 +112,30 @@ function PublishClient() {
     price: 0,
     tags: '',
   })
+
+  const [video, setVideo] = useState({
+    title: '',
+    description: '',
+    video_url: '',
+    price: 0,
+    category: 'language',
+    level: 'N/A',
+    tags: '',
+  })
+  const [videoThumbFile, setVideoThumbFile] = useState<File | null>(null)
+  const [videoThumbPreview, setVideoThumbPreview] = useState('')
+
+  const [music, setMusic] = useState({
+    title: '',
+    description: '',
+    audio_url: '',
+    genre: '',
+    instrument: '',
+    price: 0,
+    tags: '',
+  })
+  const [musicCoverFile, setMusicCoverFile] = useState<File | null>(null)
+  const [musicCoverPreview, setMusicCoverPreview] = useState('')
 
   function onImagePick(event: ChangeEvent<HTMLInputElement>, target: 'book' | 'post') {
     const file = event.target.files?.[0]
@@ -271,6 +297,74 @@ function PublishClient() {
     }
   }
 
+  async function publishVideo(event: FormEvent) {
+    event.preventDefault()
+    setSuccess(null); setError(null)
+    if (!video.title.trim()) { setError('Title is required.'); return }
+    const wallet = getWalletAddress()
+    if (!wallet) { setError('Wallet not found.'); return }
+    setSubmitting(true)
+    try {
+      let thumbnail_url: string | null = null
+      if (videoThumbFile) thumbnail_url = await uploadFile(videoThumbFile, 'covers')
+      const res = await fetch('/api/content/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
+        body: JSON.stringify({
+          title: video.title.trim(),
+          description: video.description.trim() || null,
+          video_url: video.video_url.trim() || null,
+          thumbnail_url,
+          price: Number(video.price),
+          category: video.category,
+          level: video.level,
+          tags: video.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish video')
+      setSuccess('Video published!')
+      setVideo({ title: '', description: '', video_url: '', price: 0, category: 'language', level: 'N/A', tags: '' })
+      setVideoThumbFile(null); setVideoThumbPreview('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to publish video')
+    } finally { setSubmitting(false) }
+  }
+
+  async function publishMusic(event: FormEvent) {
+    event.preventDefault()
+    setSuccess(null); setError(null)
+    if (!music.title.trim()) { setError('Title is required.'); return }
+    const wallet = getWalletAddress()
+    if (!wallet) { setError('Wallet not found.'); return }
+    setSubmitting(true)
+    try {
+      let cover_image_url: string | null = null
+      if (musicCoverFile) cover_image_url = await uploadFile(musicCoverFile, 'covers')
+      const res = await fetch('/api/content/music', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
+        body: JSON.stringify({
+          title: music.title.trim(),
+          description: music.description.trim() || null,
+          audio_url: music.audio_url.trim() || null,
+          cover_image_url,
+          genre: music.genre.trim() || null,
+          instrument: music.instrument.trim() || null,
+          price: Number(music.price),
+          tags: music.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish music')
+      setSuccess('Music published!')
+      setMusic({ title: '', description: '', audio_url: '', genre: '', instrument: '', price: 0, tags: '' })
+      setMusicCoverFile(null); setMusicCoverPreview('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to publish music')
+    } finally { setSubmitting(false) }
+  }
+
   return (
     <DashboardLayout role="tutor">
       <ErrorBoundary>
@@ -291,6 +385,20 @@ function PublishClient() {
               className={`rounded-full px-5 py-2.5 text-sm font-bold ${tab === 'post' ? 'bg-gold text-foreground' : 'bg-white text-forest'}`}
             >
               ✍️ Write Post
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('video'); setSuccess(null); setError(null) }}
+              className={`rounded-full px-5 py-2.5 text-sm font-bold ${tab === 'video' ? 'bg-gold text-foreground' : 'bg-white text-forest'}`}
+            >
+              🎬 Upload Video
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('music'); setSuccess(null); setError(null) }}
+              className={`rounded-full px-5 py-2.5 text-sm font-bold ${tab === 'music' ? 'bg-gold text-foreground' : 'bg-white text-forest'}`}
+            >
+              🎵 Upload Music
             </button>
           </div>
 
@@ -411,7 +519,9 @@ function PublishClient() {
                 )}
               </button>
             </form>
-          ) : (
+          ) : null}
+
+          {tab === 'post' ? (
             <form onSubmit={(e) => void publishPost(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl bg-white p-6 shadow-sm">
               <Field label="Title *" value={post.title} onChange={(v) => setPost({ ...post, title: v })} required />
 
@@ -472,7 +582,80 @@ function PublishClient() {
                 )}
               </button>
             </form>
-          )}
+          ) : null}
+
+          {/* ── VIDEO TAB ── */}
+          {tab === 'video' ? (
+            <form onSubmit={(e) => void publishVideo(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl bg-white p-6 shadow-sm">
+              <Field label="Title *" value={video.title} onChange={(v) => setVideo({ ...video, title: v })} required />
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Description
+                <textarea value={video.description} onChange={(e) => setVideo({ ...video, description: e.target.value })} className="min-h-24 rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+              </label>
+              <Field label="Video URL (YouTube, Vimeo, or direct)" value={video.video_url} onChange={(v) => setVideo({ ...video, video_url: v })} />
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Thumbnail image
+                <input type="file" accept="image/*" onChange={(e) => {
+                  const f = e.target.files?.[0]; if (!f) return
+                  setVideoThumbFile(f); setVideoThumbPreview(URL.createObjectURL(f))
+                }} />
+              </label>
+              {videoThumbPreview ? <CoverPreview src={videoThumbPreview} /> : null}
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Category
+                <select value={video.category} onChange={(e) => setVideo({ ...video, category: e.target.value })} className="rounded-xl border border-forest/15 px-4 py-3 font-normal">
+                  {CONTENT_CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                </select>
+              </label>
+              <div>
+                <p className="text-sm font-semibold text-forest">Level</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {['A1','A2','B1','B2','C1','C2','N/A'].map((l) => (
+                    <button key={l} type="button" onClick={() => setVideo({ ...video, level: l })}
+                      className={`rounded-full px-4 py-2 text-sm font-bold ${video.level === l ? 'bg-gold text-foreground' : 'bg-off-white text-forest'}`}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Price (cUSD — 0 = Free)
+                <input type="number" min={0} step="0.01" value={video.price} onChange={(e) => setVideo({ ...video, price: Number(e.target.value) })} className="rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+              </label>
+              <Field label="Tags (comma separated)" value={video.tags} onChange={(v) => setVideo({ ...video, tags: v })} />
+              <button type="submit" disabled={submitting} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50">
+                {submitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/30 border-t-foreground" />Publishing...</> : 'Publish Video'}
+              </button>
+            </form>
+          ) : null}
+
+          {/* ── MUSIC TAB ── */}
+          {tab === 'music' ? (
+            <form onSubmit={(e) => void publishMusic(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl bg-white p-6 shadow-sm">
+              <Field label="Title *" value={music.title} onChange={(v) => setMusic({ ...music, title: v })} required />
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Description
+                <textarea value={music.description} onChange={(e) => setMusic({ ...music, description: e.target.value })} className="min-h-24 rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+              </label>
+              <Field label="Audio URL (SoundCloud, direct MP3)" value={music.audio_url} onChange={(v) => setMusic({ ...music, audio_url: v })} />
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Cover image
+                <input type="file" accept="image/*" onChange={(e) => {
+                  const f = e.target.files?.[0]; if (!f) return
+                  setMusicCoverFile(f); setMusicCoverPreview(URL.createObjectURL(f))
+                }} />
+              </label>
+              {musicCoverPreview ? <CoverPreview src={musicCoverPreview} /> : null}
+              <Field label="Genre (Traditional, Contemporary, Folk…)" value={music.genre} onChange={(v) => setMusic({ ...music, genre: v })} />
+              <Field label="Instrument (if applicable)" value={music.instrument} onChange={(v) => setMusic({ ...music, instrument: v })} />
+              <label className="grid gap-2 text-sm font-semibold text-forest">
+                Price (cUSD — 0 = Free)
+                <input type="number" min={0} step="0.01" value={music.price} onChange={(e) => setMusic({ ...music, price: Number(e.target.value) })} className="rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+              </label>
+              <Field label="Tags (comma separated)" value={music.tags} onChange={(v) => setMusic({ ...music, tags: v })} />
+              <button type="submit" disabled={submitting} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-4 font-black text-foreground disabled:opacity-50">
+                {submitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/30 border-t-foreground" />Publishing...</> : 'Publish Music'}
+              </button>
+            </form>
+          ) : null}
         </FadeIn>
       </ErrorBoundary>
     </DashboardLayout>

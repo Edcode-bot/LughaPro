@@ -1,21 +1,38 @@
-import { ContentItem, ContentType } from '@/types'
+import { ContentCategory, ContentItem, ContentType } from '@/types'
 
 export function contentTypeLabel(type: ContentType) {
   if (type === 'book') return 'Book'
   if (type === 'post') return 'Post'
+  if (type === 'video') return 'Video'
+  if (type === 'music') return 'Music'
   return 'Lesson'
 }
 
-export function contentCoverStyle(type: ContentType) {
-  if (type === 'book') return 'bg-gradient-to-br from-forest to-jade'
-  if (type === 'post') return 'bg-gradient-to-br from-gold to-jade'
-  return 'bg-gradient-to-br from-jade to-forest'
+/** Solid hex color for category placeholders — no emoji, no gradients */
+export function categoryColor(category?: ContentCategory | string | null): string {
+  if (category === 'music') return '#171717'
+  if (category === 'arts') return '#FFBF00'
+  if (category === 'literature') return '#2d6a4f'
+  if (category === 'video') return '#171717'
+  if (category === 'experience') return '#1a4731'
+  return '#1a4731'
 }
 
-export function contentCoverEmoji(type: ContentType) {
-  if (type === 'book') return '📚'
-  if (type === 'post') return '📝'
-  return '🎬'
+export function categoryTextColor(category?: ContentCategory | string | null): string {
+  if (category === 'arts') return '#171717'
+  return '#ffffff'
+}
+
+export function contentCoverStyle(type: ContentType) {
+  if (type === 'book') return 'bg-[#1a4731]'
+  if (type === 'post') return 'bg-[#FFBF00]'
+  if (type === 'video') return 'bg-[#171717]'
+  if (type === 'music') return 'bg-[#171717]'
+  return 'bg-[#2d6a4f]'
+}
+
+export function contentCoverEmoji(_type: ContentType) {
+  return ''
 }
 
 export function initials(name: string) {

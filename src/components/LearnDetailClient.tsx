@@ -10,7 +10,7 @@ import { FadeIn } from "@/components/ui/FadeIn";
 import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { PurchaseFlow } from "@/components/web3/PurchaseFlow";
-import { initials, isFreeContent } from "@/lib/content";
+import { categoryColor, initials, isFreeContent } from "@/lib/content";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import { ContentItem } from "@/types";
@@ -145,7 +145,7 @@ export function LearnDetailClient({ id }: { id: string }) {
             ← Back to Content
           </Link>
 
-          {/* Cover image */}
+          {/* Cover image / solid color placeholder */}
           <div className="mt-5 h-64 w-full overflow-hidden rounded-2xl sm:h-80">
             {item.cover_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -156,14 +156,11 @@ export function LearnDetailClient({ id }: { id: string }) {
               />
             ) : (
               <div
-                className="h-full w-full"
-                style={{
-                  background:
-                    item.type === "post"
-                      ? "linear-gradient(135deg, #FFBF00, #e6ac00)"
-                      : "linear-gradient(135deg, #1a4731, #2d6a4f)",
-                }}
-              />
+                className="flex h-full w-full items-end p-6"
+                style={{ background: categoryColor(item.category) }}
+              >
+                <p className="font-serif text-2xl font-black text-white">{item.title}</p>
+              </div>
             )}
           </div>
 
@@ -252,6 +249,28 @@ export function LearnDetailClient({ id }: { id: string }) {
                 </div>
               ) : null}
 
+              {/* Video locked state */}
+              {item.type === "video" ? (
+                <div className="relative mt-4 flex h-40 w-full items-center justify-center overflow-hidden rounded-xl bg-[#171717]">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
+                    <span className="text-3xl text-white">▶</span>
+                  </div>
+                  <div className="absolute inset-0 bg-[#171717]/50" />
+                  <span className="absolute bottom-4 right-4 rounded-full border border-white/30 px-3 py-1 text-xs font-bold text-white">🔒 Locked</span>
+                </div>
+              ) : null}
+
+              {/* Music locked state */}
+              {item.type === "music" ? (
+                <div className="relative mt-4 flex items-center gap-4 rounded-xl bg-[#171717] p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 text-white text-xl">♪</div>
+                  <div className="flex-1">
+                    <div className="h-2 w-full rounded-full bg-white/10" />
+                    <p className="mt-2 text-xs text-white/40">🔒 Purchase to listen</p>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Purchase gate */}
               <div className="mt-6">
                 {!isConnected ? (
@@ -305,11 +324,47 @@ export function LearnDetailClient({ id }: { id: string }) {
                     type="button"
                     onClick={() => void handleDownload()}
                     disabled={!item.file_url}
-                    className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-forest px-6 py-3 font-bold text-white disabled:opacity-50"
+                    className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1a4731] px-6 py-3 font-bold text-white disabled:opacity-50"
                   >
                     {item.file_url ? "⬇ Download Book" : "File not available"}
                   </button>
                 </div>
+              ) : null}
+
+              {/* Video player */}
+              {item.type === "video" && item.video_url ? (
+                <div className="mt-2 overflow-hidden rounded-2xl bg-[#171717]">
+                  {item.video_url.includes("youtube.com") || item.video_url.includes("youtu.be") || item.video_url.includes("vimeo.com") ? (
+                    <iframe
+                      src={item.video_url.replace("watch?v=", "embed/")}
+                      className="aspect-video w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={item.video_url} controls className="w-full rounded-2xl" />
+                  )}
+                </div>
+              ) : item.type === "video" ? (
+                <p className="mt-4 text-foreground/60">Video file not available.</p>
+              ) : null}
+
+              {/* Audio player */}
+              {item.type === "music" && item.audio_url ? (
+                <div className="mt-2 rounded-2xl bg-white p-6 shadow-sm">
+                  {item.description ? (
+                    <p className="mb-4 leading-relaxed text-foreground/75">{item.description}</p>
+                  ) : null}
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <audio
+                    src={item.audio_url}
+                    controls
+                    className="w-full accent-[#FFBF00]"
+                  />
+                </div>
+              ) : item.type === "music" ? (
+                <p className="mt-4 text-foreground/60">Audio file not available.</p>
               ) : null}
             </div>
           ) : null}

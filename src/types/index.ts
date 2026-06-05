@@ -1,7 +1,8 @@
 export type BookingStatus = 'pending' | 'paid' | 'active' | 'completed' | 'cancelled' | 'disputed'
 export type PaymentMethod = 'cusd' | 'celo' | 'fiat'
 export type UserRole = 'student' | 'tutor' | 'admin'
-export type ContentType = 'book' | 'post' | 'lesson'
+export type ContentType = 'book' | 'post' | 'lesson' | 'video' | 'music'
+export type ContentCategory = 'language' | 'music' | 'arts' | 'literature' | 'video' | 'experience'
 export type ContentLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'All'
 
 export type Profile = {
@@ -137,8 +138,12 @@ export type ContentItem = {
   price: number
   cover_image_url: string | null
   file_url: string | null
+  video_url?: string | null
+  audio_url?: string | null
+  duration_seconds?: number | null
   tags: string[] | null
   language: string | null
+  category?: ContentCategory | null
   author_id: string
   author?: Profile
   created_at: string

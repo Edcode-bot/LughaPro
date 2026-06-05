@@ -20,15 +20,15 @@ export function NavBar() {
   const { isConnected, displayName, address, role, disconnect } = useAuth();
 
   const publicLinks = [
-    { label: "Learn", href: "/learn" },
-    { label: "Find Tutors", href: "/tutors" },
+    { label: "Explore", href: "/explore" },
+    { label: "Creators", href: "/creators" },
     { label: "About", href: "/about" },
   ];
 
   const connectedLinks = [
-    { label: "Learn", href: "/learn" },
+    { label: "Explore", href: "/explore" },
     { label: "My Library", href: "/library" },
-    { label: "Find Tutors", href: "/tutors" },
+    { label: "Creators", href: "/creators" },
   ];
 
   const centerLinks = isConnected ? connectedLinks : publicLinks;

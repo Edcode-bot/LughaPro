@@ -16,8 +16,8 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
-  title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",
-  description: 'Book live Kiswahili sessions with verified African tutors. Pay with crypto or card.',
+  title: "LughaPro — Learn. Discover. Preserve.",
+  description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
   icons: {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon.png' }],
     shortcut: '/favicon.svg',
@@ -32,14 +32,14 @@ export const metadata: Metadata = {
       'b6f005b5b6023aba8fc8ce1426aecaaa5069931a78cb6f05c6535b65687eb21c8d50c3e058b3170706f1d9e81875951dcf3578f4dff68a212c9aa397bfc8426e',
   },
   openGraph: {
-    title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",
-    description: 'Book live Kiswahili sessions with verified African tutors. Pay with crypto or card.',
+    title: "LughaPro — Learn. Discover. Preserve.",
+    description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
     images: ['/og-image.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "LughaPro — Learn Kiswahili with Africa's Best Tutors",
-    description: 'Book live Kiswahili sessions with verified African tutors. Pay with crypto or card.',
+    title: "LughaPro — Learn. Discover. Preserve.",
+    description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
     images: ['/og-image.png'],
   },
 }
