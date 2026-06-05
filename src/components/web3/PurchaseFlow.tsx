@@ -82,6 +82,13 @@ export function PurchaseFlow({
     if (!address) return
     setError('')
 
+    // Guard: creator wallet must be a valid non-zero address
+    if (!creatorAddress || creatorAddress === '0x0000000000000000000000000000000000000000') {
+      setError('Creator wallet address not found. Cannot process payment.')
+      setStep('error')
+      return
+    }
+
     try {
       const contentIdBytes = keccak256(stringToHex(contentId)) as `0x${string}`
       const purchaseId = keccak256(encodePacked(
@@ -89,17 +96,19 @@ export function PurchaseFlow({
         [address, contentIdBytes, BigInt(Date.now())],
       )) as `0x${string}`
 
+      const creatorWalletAddress = creatorAddress as `0x${string}`
       let hash: `0x${string}`
 
       if (payToken === 'celo') {
-        // Native CELO — no approval needed
+        // Native CELO — send msg.value, no token approval needed
         setStep('purchasing')
+        const celoAmount = parseEther(priceUSD.toString())
         hash = await writeContractAsync({
           address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
           abi: LUGHA_PAYMENT_V2_ABI,
           functionName: 'purchaseWithCELO',
-          args: [purchaseId, creatorAddress as `0x${string}`, contentIdBytes],
-          value: parseEther(priceUSD.toString()),
+          args: [purchaseId, creatorWalletAddress, contentIdBytes],
+          value: celoAmount,
           chainId: 42220,
         })
       } else {
@@ -122,7 +131,7 @@ export function PurchaseFlow({
           address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
           abi: LUGHA_PAYMENT_V2_ABI,
           functionName: 'purchaseWithToken',
-          args: [purchaseId, creatorAddress as `0x${string}`, contentIdBytes, amount, paymentToken],
+          args: [purchaseId, creatorWalletAddress, contentIdBytes, amount, paymentToken],
           chainId: 42220,
         })
       }
@@ -272,7 +281,7 @@ export function PurchaseFlow({
         {step === 'idle' || step === 'error' ? `Pay ${priceUSD} ${tokenLabel(payToken)}` : 'Processing…'}
       </button>
       <p className="mt-2 text-center text-xs text-foreground/40">
-        Powered by LughaPaymentV2 · Celo blockchain
+        Powered by Celo blockchain
       </p>
     </div>
   )

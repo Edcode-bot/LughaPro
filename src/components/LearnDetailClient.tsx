@@ -231,21 +231,23 @@ export function LearnDetailClient({ id }: { id: string }) {
             </div>
           ) : null}
 
-          {/* ——— LOCKED PREVIEW (paid, not purchased) ——— */}
+          {/* ——— LOCKED PREVIEW (paid, not yet purchased) ——— */}
           {!hasAccess && !free ? (
             <div className="mt-6">
-              {/* Description / excerpt */}
-              {item.description ? (
+              {/* Description only — never show actual content here */}
+              {item.description && item.type !== "post" ? (
                 <p className="leading-relaxed text-foreground/70">
                   {item.description.slice(0, 150)}{item.description.length > 150 ? "…" : ""}
                 </p>
               ) : null}
 
-              {/* Post preview: first 2 sentences, then blur */}
+              {/* Post preview: first sentence with blur — no full content */}
               {item.type === "post" && item.content ? (
                 <div className="relative mt-4 overflow-hidden rounded-xl bg-white p-5">
-                  <p className="text-foreground/80">{excerpt(item.content, 2)}</p>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                  <p className="text-foreground/80">
+                    {item.content.split('.')[0].trim() + '…'}
+                  </p>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
                 </div>
               ) : null}
 
