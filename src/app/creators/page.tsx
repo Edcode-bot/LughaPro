@@ -126,7 +126,17 @@ export default function CreatorsPage() {
 
         {!loading && creators.length === 0 ? (
           <div className="mt-16 text-center">
-            <p className="text-lg font-bold text-[#171717]">No creators found.</p>
+            <p className="text-lg font-bold text-[#171717]">
+              {query || filter ? 'No creators match your search.' : 'No creators yet — be the first!'}
+            </p>
+            {!query && !filter ? (
+              <a
+                href="/publish"
+                className="mt-4 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-black text-[#171717]"
+              >
+                Become a Creator
+              </a>
+            ) : null}
           </div>
         ) : null}
       </div>

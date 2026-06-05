@@ -1,14 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { parseUnits, keccak256, stringToHex, encodePacked, formatUnits } from 'viem'
-import { useWriteContract, useReadContract, useAccount, usePublicClient } from 'wagmi'
-import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_ABI, CUSD_ABI } from '@/lib/contracts'
+import { parseUnits, parseEther, keccak256, stringToHex, encodePacked, formatUnits } from 'viem'
+import { useWriteContract, useReadContract, useAccount, usePublicClient, useBalance } from 'wagmi'
+import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_ABI, LUGHA_PAYMENT_V2_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
 import { ContentType } from '@/types'
+
+type PaymentToken = 'cusd' | 'usdt' | 'celo'
 
 function truncateHash(hash: string) {
   if (hash.length < 20) return hash
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`
+}
+
+function tokenLabel(token: PaymentToken) {
+  if (token === 'cusd') return 'cUSD'
+  if (token === 'usdt') return 'USDT'
+  return 'CELO'
 }
 
 export function PurchaseFlow({
@@ -31,8 +39,12 @@ export function PurchaseFlow({
   const [step, setStep] = useState<'idle' | 'approving' | 'purchasing' | 'done' | 'error'>('idle')
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')
+  const [payToken, setPayToken] = useState<PaymentToken>('cusd')
   const { writeContractAsync } = useWriteContract()
 
+  const useV2 = !!CONTRACT_ADDRESSES.celo.LughaPaymentV2
+
+  // Token balances
   const { data: cusdBalance } = useReadContract({
     address: CONTRACT_ADDRESSES.celo.cUSD,
     abi: CUSD_ABI,
@@ -41,9 +53,32 @@ export function PurchaseFlow({
     query: { enabled: !!address },
   })
 
+  const { data: usdtBalance } = useReadContract({
+    address: CONTRACT_ADDRESSES.celo.USDT,
+    abi: USDT_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && useV2 },
+  })
+
+  const { data: celoBalanceData } = useBalance({
+    address: address ?? undefined,
+    query: { enabled: !!address && useV2 },
+  })
+
   const amount = parseUnits(priceUSD.toString(), 18)
-  const hasEnoughBalance = cusdBalance !== undefined && cusdBalance >= amount
-  const cusdFormatted = cusdBalance !== undefined ? Number(formatUnits(cusdBalance, 18)).toFixed(2) : '—'
+
+  const balances = {
+    cusd: cusdBalance ?? BigInt(0),
+    usdt: usdtBalance ?? BigInt(0),
+    celo: celoBalanceData?.value ?? BigInt(0),
+  }
+
+  const hasEnough = balances[payToken] >= amount
+
+  function fmtBalance(val: bigint) {
+    return Number(formatUnits(val, 18)).toFixed(2)
+  }
 
   async function handlePurchase() {
     if (!address) return
@@ -56,34 +91,63 @@ export function PurchaseFlow({
         [address, contentIdBytes, BigInt(Date.now())],
       )) as `0x${string}`
 
-      // Step 1: approve cUSD spend
-      setStep('approving')
-      const approveHash = await writeContractAsync({
-        address: CONTRACT_ADDRESSES.celo.cUSD,
-        abi: CUSD_ABI,
-        functionName: 'approve',
-        args: [CONTRACT_ADDRESSES.celo.LughaPayment, amount],
-      })
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: approveHash })
+      let hash: `0x${string}`
+
+      if (useV2 && payToken === 'celo') {
+        // Native CELO purchase (no approval needed)
+        setStep('purchasing')
+        hash = await writeContractAsync({
+          address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
+          abi: LUGHA_PAYMENT_V2_ABI,
+          functionName: 'purchaseWithCELO',
+          args: [purchaseId, creatorAddress, contentIdBytes],
+          value: amount,
+        })
+      } else if (useV2 && (payToken === 'cusd' || payToken === 'usdt')) {
+        const tokenAddress = payToken === 'usdt' ? CONTRACT_ADDRESSES.celo.USDT : CONTRACT_ADDRESSES.celo.cUSD
+        const tokenAbi = payToken === 'usdt' ? USDT_ABI : CUSD_ABI
+
+        // Approve token spend
+        setStep('approving')
+        const approveHash = await writeContractAsync({
+          address: tokenAddress,
+          abi: tokenAbi,
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESSES.celo.LughaPaymentV2, amount],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
+
+        setStep('purchasing')
+        hash = await writeContractAsync({
+          address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
+          abi: LUGHA_PAYMENT_V2_ABI,
+          functionName: 'purchaseWithToken',
+          args: [purchaseId, creatorAddress, contentIdBytes, amount, tokenAddress],
+        })
+      } else {
+        // V1 fallback: cUSD via LughaPayment
+        setStep('approving')
+        const approveHash = await writeContractAsync({
+          address: CONTRACT_ADDRESSES.celo.cUSD,
+          abi: CUSD_ABI,
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESSES.celo.LughaPayment, amount],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
+
+        setStep('purchasing')
+        hash = await writeContractAsync({
+          address: CONTRACT_ADDRESSES.celo.LughaPayment,
+          abi: LUGHA_PAYMENT_ABI,
+          functionName: 'purchaseContent',
+          args: [purchaseId, creatorAddress, contentIdBytes, amount],
+        })
       }
 
-      // Step 2: call LughaPayment.purchaseContent — this is the contract interaction
-      // that shows up on Talent App at 0xFaBAC9A356C001dC3B32352e9b0f0B4D7c171B41
-      setStep('purchasing')
-      const hash = await writeContractAsync({
-        address: CONTRACT_ADDRESSES.celo.LughaPayment,
-        abi: LUGHA_PAYMENT_ABI,
-        functionName: 'purchaseContent',
-        args: [purchaseId, creatorAddress, contentIdBytes, amount],
-      })
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash })
-      }
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
 
       setTxHash(hash)
 
-      // Record purchase in DB immediately — no waiting, access is instant
       await fetch('/api/purchases', {
         method: 'POST',
         headers: {
@@ -94,7 +158,7 @@ export function PurchaseFlow({
           content_id: contentId,
           content_type: contentType,
           amount: priceUSD,
-          payment_method: 'cusd',
+          payment_method: payToken,
           tx_hash: hash,
           status: 'paid',
         }),
@@ -107,7 +171,7 @@ export function PurchaseFlow({
       if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled')) {
         setError('Transaction cancelled.')
       } else if (msg.includes('insufficient') || msg.includes('balance')) {
-        setError('Not enough cUSD in your wallet. You need cUSD — not CELO — to pay.')
+        setError(`Not enough ${tokenLabel(payToken)} in your wallet.`)
       } else {
         setError('Transaction failed. Please try again.')
       }
@@ -135,7 +199,7 @@ export function PurchaseFlow({
             </a>
           </div>
         ) : null}
-        <button type="button" onClick={() => onSuccess(txHash)} className="mt-5 w-full rounded-full bg-gold py-3 font-black text-foreground">
+        <button type="button" onClick={() => onSuccess(txHash)} className="mt-5 w-full rounded-full bg-[#FFBF00] py-3 font-black text-[#171717]">
           Read Now
         </button>
       </div>
@@ -144,48 +208,73 @@ export function PurchaseFlow({
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm">
-      <h3 className="font-serif text-xl font-black text-forest">Unlock Full Access</h3>
+      <h3 className="font-serif text-xl font-black text-[#1a4731]">Unlock Full Access</h3>
       <p className="mt-1 text-sm text-foreground/60">{contentTitle}</p>
 
-      <div className="mt-4 flex items-center justify-between rounded-xl bg-off-white p-4">
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-[#f8f4ef] p-4">
         <span className="font-semibold">Price</span>
-        <span className="font-black text-forest">{priceUSD} cUSD</span>
+        <span className="font-black text-[#1a4731]">{priceUSD} USD</span>
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-xl bg-cream px-4 py-2 text-sm">
-        <span className="text-foreground/60">Your cUSD balance</span>
-        <span className={`font-bold ${hasEnoughBalance ? 'text-jade' : 'text-red-600'}`}>{cusdFormatted} cUSD</span>
+      {/* Token selector — only show if V2 is deployed */}
+      {useV2 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-semibold text-foreground/55">Pay with</p>
+          <div className="flex gap-2">
+            {(['cusd', 'usdt', 'celo'] as PaymentToken[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setPayToken(t)}
+                className={`flex-1 rounded-xl border py-2 text-sm font-bold transition ${
+                  payToken === t
+                    ? 'border-[#FFBF00] bg-[#FFBF00] text-[#171717]'
+                    : 'border-gray-200 text-gray-500 hover:border-[#171717]'
+                }`}
+              >
+                {tokenLabel(t)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Balance row */}
+      <div className="mt-3 flex items-center justify-between rounded-xl bg-[#fdf6e3] px-4 py-2 text-sm">
+        <span className="text-foreground/60">Your {tokenLabel(payToken)} balance</span>
+        <span className={`font-bold ${hasEnough ? 'text-[#2d6a4f]' : 'text-red-600'}`}>
+          {fmtBalance(balances[payToken])} {tokenLabel(payToken)}
+        </span>
       </div>
 
-      {cusdBalance !== undefined && !hasEnoughBalance ? (
+      {!hasEnough ? (
         <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          <p className="font-semibold">Not enough cUSD in your wallet.</p>
-          <p className="mt-1">
-            You need <strong>{priceUSD} cUSD</strong> but have <strong>{cusdFormatted} cUSD</strong>.
-            {' '}cUSD is a stablecoin on Celo — it is different from CELO.
-          </p>
-          <a
-            href="https://app.ubeswap.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold text-red-700"
-          >
-            Swap CELO → cUSD on Ubeswap ↗
-          </a>
+          <p className="font-semibold">Not enough {tokenLabel(payToken)}.</p>
+          <p className="mt-1">You need <strong>{priceUSD} {tokenLabel(payToken)}</strong> but have <strong>{fmtBalance(balances[payToken])}</strong>.</p>
+          {payToken !== 'celo' ? (
+            <a
+              href="https://app.ubeswap.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold text-red-700"
+            >
+              Swap on Ubeswap ↗
+            </a>
+          ) : null}
         </div>
       ) : null}
 
       {step === 'approving' ? (
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream p-4">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
-          <span className="text-sm font-semibold">Step 1/2 — Approving cUSD spend… confirm in wallet</span>
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-[#fdf6e3] p-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#FFBF00] border-t-transparent" />
+          <span className="text-sm font-semibold">Approving {tokenLabel(payToken)} spend… confirm in wallet</span>
         </div>
       ) : null}
 
       {step === 'purchasing' ? (
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream p-4">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
-          <span className="text-sm font-semibold">Step 2/2 — Processing payment on Celo…</span>
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-[#fdf6e3] p-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#FFBF00] border-t-transparent" />
+          <span className="text-sm font-semibold">Processing payment on Celo…</span>
         </div>
       ) : null}
 
@@ -196,13 +285,13 @@ export function PurchaseFlow({
       <button
         type="button"
         onClick={() => void handlePurchase()}
-        disabled={!hasEnoughBalance || step === 'approving' || step === 'purchasing'}
-        className="mt-4 w-full rounded-full bg-gold py-3 font-black text-foreground disabled:opacity-50"
+        disabled={!hasEnough || step === 'approving' || step === 'purchasing'}
+        className="mt-4 w-full rounded-full bg-[#FFBF00] py-3 font-black text-[#171717] disabled:opacity-50"
       >
-        {step === 'idle' || step === 'error' ? `Pay ${priceUSD} cUSD` : 'Processing…'}
+        {step === 'idle' || step === 'error' ? `Pay ${priceUSD} ${tokenLabel(payToken)}` : 'Processing…'}
       </button>
       <p className="mt-2 text-center text-xs text-foreground/40">
-        Powered by LughaPayment contract · Celo blockchain
+        Powered by LughaPayment · Celo blockchain
       </p>
     </div>
   )

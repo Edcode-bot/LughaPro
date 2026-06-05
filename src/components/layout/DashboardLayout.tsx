@@ -24,8 +24,8 @@ import { shortenAddress } from "@/lib/minipay";
 
 const allLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/learn", label: "Explore", icon: Home },
   { href: "/library", label: "My Library", icon: BookOpen },
-  { href: "/learn", label: "Browse Content", icon: Home },
   { href: "/my-content", label: "My Content", icon: FileText },
   { href: "/publish", label: "Publish", icon: PenSquare },
   { href: "/earnings", label: "Earnings", icon: BarChart3 },

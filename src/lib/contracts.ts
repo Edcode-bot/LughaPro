@@ -1,13 +1,16 @@
 export const CONTRACT_ADDRESSES = {
   celo: {
     LughaPayment: '0xFaBAC9A356C001dC3B32352e9b0f0B4D7c171B41' as `0x${string}`,
+    LughaPaymentV2: '' as `0x${string}`, // fill after deploy
     LughaReferral: '0x385ba479dbEFcF3c4b0e5d0f778A43370c9e05B5' as `0x${string}`,
     LughaCertificate: '0x0CbE851a9E6f9aCBCC2B78Ada127001422B686af' as `0x${string}`,
     cUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as `0x${string}`,
+    USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e' as `0x${string}`,
   }
 } as const
 
 export const CUSD_MAINNET_ADDRESS = CONTRACT_ADDRESSES.celo.cUSD
+export const USDT_MAINNET_ADDRESS = CONTRACT_ADDRESSES.celo.USDT
 
 export const CUSD_ABI = [
   { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }], stateMutability: 'nonpayable' },
@@ -17,6 +20,7 @@ export const CUSD_ABI = [
 ] as const
 
 export const ERC20_ABI = CUSD_ABI
+export const USDT_ABI = CUSD_ABI
 
 export const LUGHA_PAYMENT_ABI = [
   { type: 'function', name: 'purchaseContent', inputs: [{ name: 'purchaseId', type: 'bytes32' }, { name: 'creator', type: 'address' }, { name: 'contentId', type: 'bytes32' }, { name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
@@ -25,6 +29,37 @@ export const LUGHA_PAYMENT_ABI = [
   { type: 'function', name: 'getCreatorBalance', inputs: [{ name: 'creator', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
   { type: 'event', name: 'ContentPurchased', inputs: [{ name: 'purchaseId', type: 'bytes32', indexed: true }, { name: 'buyer', type: 'address', indexed: true }, { name: 'creator', type: 'address', indexed: true }, { name: 'contentId', type: 'bytes32' }, { name: 'amount', type: 'uint256' }] },
   { type: 'event', name: 'CreatorWithdraw', inputs: [{ name: 'creator', type: 'address', indexed: true }, { name: 'amount', type: 'uint256' }] },
+] as const
+
+export const LUGHA_PAYMENT_V2_ABI = [
+  { type: 'function', name: 'purchaseWithToken', inputs: [
+    { name: 'purchaseId', type: 'bytes32' },
+    { name: 'creator', type: 'address' },
+    { name: 'contentId', type: 'bytes32' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'token', type: 'address' }
+  ], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'purchaseWithCELO', inputs: [
+    { name: 'purchaseId', type: 'bytes32' },
+    { name: 'creator', type: 'address' },
+    { name: 'contentId', type: 'bytes32' }
+  ], outputs: [], stateMutability: 'payable' },
+  { type: 'function', name: 'withdrawTokenEarnings', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'withdrawCeloEarnings', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'hasPurchased', inputs: [
+    { name: 'buyer', type: 'address' },
+    { name: 'contentId', type: 'bytes32' }
+  ], outputs: [{ type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'getCreatorTokenBalance', inputs: [{ name: 'creator', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getCreatorCeloBalance', inputs: [{ name: 'creator', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  { type: 'event', name: 'ContentPurchased', inputs: [
+    { name: 'purchaseId', type: 'bytes32', indexed: true },
+    { name: 'buyer', type: 'address', indexed: true },
+    { name: 'creator', type: 'address', indexed: true },
+    { name: 'contentId', type: 'bytes32' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'token', type: 'address' }
+  ]},
 ] as const
 
 export const LUGHA_REFERRAL_ABI = [
