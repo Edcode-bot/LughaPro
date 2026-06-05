@@ -1,47 +1,57 @@
 import { NextRequest } from 'next/server'
 import { jsonError, jsonOk } from '@/lib/api'
-import { getBookOwnerId } from '@/lib/books'
 import { supabaseAdmin } from '@/lib/supabase'
-import { Book, ContentItem, ContentType, Post, Profile } from '@/types'
+import { ContentItem, ContentType, Profile } from '@/types'
 
-function bookToContent(book: Book & { author?: Profile }): ContentItem {
-  const type: ContentType = book.content_type === 'lesson' ? 'lesson' : 'book'
+// Extract Profile from a Supabase joined row (handles array or object)
+function extractProfile(raw: unknown): Profile | undefined {
+  if (!raw) return undefined
+  const p = Array.isArray(raw) ? raw[0] : raw
+  if (!p || typeof p !== 'object') return undefined
+  return p as Profile
+}
+
+function bookToContent(book: Record<string, unknown>): ContentItem {
+  const type: ContentType = (book.content_type as string) === 'lesson' ? 'lesson' : 'book'
+  const ownerId = (book.tutor_id ?? book.author_id ?? '') as string
+  const author = extractProfile(book.profiles)
   return {
-    id: book.id,
+    id: book.id as string,
     type,
-    title: book.title,
-    description: book.description,
-    level: book.level,
+    title: book.title as string,
+    description: book.description as string | null,
+    level: book.level as string | null,
     price: Number(book.price ?? 0),
-    cover_image_url: book.cover_image_url,
-    file_url: book.file_url,
-    tags: book.tags,
-    language: book.language,
-    category: (book as Record<string, unknown>).content_category as ContentItem['category'] ?? 'language',
-    author_id: getBookOwnerId(book),
-    author: book.author,
-    created_at: book.created_at,
+    cover_image_url: book.cover_image_url as string | null,
+    file_url: book.file_url as string | null,
+    tags: book.tags as string[] | null,
+    language: book.language as string | null,
+    category: (book.content_category as ContentItem['category']) ?? 'language',
+    author_id: ownerId,
+    author,
+    created_at: book.created_at as string,
     popularity: 0,
   }
 }
 
-function postToContent(post: Post & { author?: Profile }): ContentItem {
+function postToContent(post: Record<string, unknown>): ContentItem {
+  const author = extractProfile(post.profiles)
   return {
-    id: post.id,
+    id: post.id as string,
     type: 'post',
-    title: post.title,
-    description: post.content?.slice(0, 180) ?? null,
-    content: post.content,
+    title: post.title as string,
+    description: (post.content as string | null)?.slice(0, 180) ?? null,
+    content: post.content as string | null,
     level: null,
     price: post.is_premium ? Number(post.price ?? 0) : 0,
-    cover_image_url: post.cover_image_url,
+    cover_image_url: post.cover_image_url as string | null,
     file_url: null,
-    tags: post.tags,
-    language: post.language,
-    category: (post as Record<string, unknown>).content_category as ContentItem['category'] ?? 'language',
-    author_id: post.author_id,
-    author: post.author,
-    created_at: post.created_at,
+    tags: post.tags as string[] | null,
+    language: post.language as string | null,
+    category: (post.content_category as ContentItem['category']) ?? 'language',
+    author_id: post.author_id as string,
+    author,
+    created_at: post.created_at as string,
     popularity: 0,
   }
 }
@@ -128,7 +138,12 @@ export async function GET(request: NextRequest) {
     const items: ContentItem[] = []
 
     if (!type || type === 'all' || type === 'book' || type === 'lesson') {
-      let q = supabaseAdmin.from('books').select('*').eq('published', true).order('created_at', { ascending: false })
+      const PROFILE_SELECT = 'profiles(id, full_name, wallet_address, avatar_url)'
+      let q = supabaseAdmin
+        .from('books')
+        .select(`*, ${PROFILE_SELECT}`)
+        .eq('published', true)
+        .order('created_at', { ascending: false })
       if (authorId) q = q.eq('tutor_id', authorId)
       if (type === 'book') q = q.neq('content_type', 'lesson')
       if (type === 'lesson') q = q.eq('content_type', 'lesson')
@@ -139,11 +154,16 @@ export async function GET(request: NextRequest) {
       if (search) q = q.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
       if (category) q = q.eq('content_category', category)
       const { data: books, error } = await q
-      if (!error && books) items.push(...(books as (Book & { author?: Profile })[]).map(bookToContent))
+      if (!error && books) items.push(...(books as Record<string, unknown>[]).map(bookToContent))
     }
 
     if (!type || type === 'all' || type === 'post') {
-      let q = supabaseAdmin.from('posts').select('*').eq('published', true).order('created_at', { ascending: false })
+      const PROFILE_SELECT = 'profiles(id, full_name, wallet_address, avatar_url)'
+      let q = supabaseAdmin
+        .from('posts')
+        .select(`*, ${PROFILE_SELECT}`)
+        .eq('published', true)
+        .order('created_at', { ascending: false })
       if (authorId) q = q.eq('author_id', authorId)
       if (price === 'free') q = q.eq('is_premium', false)
       if (price === 'paid') q = q.eq('is_premium', true)
@@ -151,7 +171,7 @@ export async function GET(request: NextRequest) {
       if (search) q = q.or(`title.ilike.%${search}%,content.ilike.%${search}%`)
       if (category) q = q.eq('content_category', category)
       const { data: posts, error } = await q
-      if (!error && posts) items.push(...(posts as (Post & { author?: Profile })[]).map(postToContent))
+      if (!error && posts) items.push(...(posts as Record<string, unknown>[]).map(postToContent))
     }
 
     // Videos — gracefully skip if table doesn't exist yet
@@ -181,18 +201,9 @@ export async function GET(request: NextRequest) {
       } catch { /* music table not yet created */ }
     }
 
-    // Enrich with author profiles for book/post (videos/music use creator_id directly)
-    const authorIds = [...new Set(items.map((item) => item.author_id).filter(Boolean))]
-    const { data: authors } = authorIds.length
-      ? await supabaseAdmin.from('profiles').select('*').in('id', authorIds)
-      : { data: [] as Profile[] }
-
-    const authorMap = new Map((authors ?? []).map((a) => [a.id, a as Profile]))
-    const enriched = items.map((item) => ({ ...item, author: authorMap.get(item.author_id) ?? item.author }))
-
-    enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    const total = enriched.length
-    const pageItems = enriched.slice(offset, offset + limit)
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const total = items.length
+    const pageItems = items.slice(offset, offset + limit)
 
     return jsonOk({ items: pageItems, total, limit, offset }, 'Content loaded')
   } catch {
