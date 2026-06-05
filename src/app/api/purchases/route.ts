@@ -94,11 +94,18 @@ export async function POST(request: Request) {
       content_id?: string
       content_type?: ContentType
       amount?: number
+      payment_method?: string
+      tx_hash?: string
+      status?: string
       progress_status?: 'not_started' | 'reading' | 'completed'
       progress_percent?: number
     }
     if (!body.content_id || !body.content_type) {
       return jsonError('content_id and content_type are required', 422)
+    }
+    // Require tx_hash for paid content
+    if (Number(body.amount ?? 0) > 0 && !body.tx_hash) {
+      return jsonError('tx_hash is required for paid content', 422)
     }
 
     const { data, error } = await supabase
@@ -109,6 +116,9 @@ export async function POST(request: Request) {
           content_id: body.content_id,
           content_type: body.content_type,
           amount: Number(body.amount ?? 0),
+          payment_method: body.payment_method ?? 'cusd',
+          tx_hash: body.tx_hash ?? null,
+          status: body.status ?? 'paid',
           purchased_at: new Date().toISOString(),
           progress_status: body.progress_status ?? 'reading',
           progress_percent: body.progress_percent ?? 10,
