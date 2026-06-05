@@ -29,157 +29,157 @@ export async function GET(
   const { id } = await params
   const type = request.nextUrl.searchParams.get('type')
 
+  // Determine search order — hint type goes first, then all others as fallback
+  function tableOrder(): Array<'book' | 'post' | 'video' | 'music'> {
+    if (type === 'post') return ['post', 'book', 'video', 'music']
+    if (type === 'video') return ['video', 'book', 'post', 'music']
+    if (type === 'music') return ['music', 'book', 'post', 'video']
+    return ['book', 'post', 'video', 'music'] // default / lesson / no type
+  }
+
+  const PROFILE_COLS = 'profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)'
+
+  async function tryBook(): Promise<ContentItem | null> {
+    const { data: book } = await supabaseAdmin
+      .from('books')
+      .select(`*, ${PROFILE_COLS}`)
+      .eq('id', id)
+      .maybeSingle()
+    if (!book) return null
+    const raw = book as Record<string, unknown>
+    const ownerId = (raw.tutor_id ?? raw.author_id ?? '') as string
+    let author = extractProfile(raw.profiles)
+    if (!author?.wallet_address) author = await fetchProfileById(ownerId) ?? author
+    const contentType: ContentType = (raw.content_type as string) === 'lesson' ? 'lesson' : 'book'
+    return {
+      id: raw.id as string,
+      type: contentType,
+      title: raw.title as string,
+      description: raw.description as string | null,
+      level: raw.level as string | null,
+      price: Number(raw.price ?? 0),
+      cover_image_url: raw.cover_image_url as string | null,
+      file_url: raw.file_url as string | null,
+      tags: raw.tags as string[] | null,
+      language: raw.language as string | null,
+      category: (raw.content_category as ContentItem['category']) ?? 'language',
+      author_id: ownerId,
+      author,
+      created_at: raw.created_at as string,
+      popularity: 0,
+    }
+  }
+
+  async function tryPost(): Promise<ContentItem | null> {
+    const { data: post } = await supabaseAdmin
+      .from('posts')
+      .select(`*, ${PROFILE_COLS}`)
+      .eq('id', id)
+      .maybeSingle()
+    if (!post) return null
+    const raw = post as Record<string, unknown>
+    const authorId = raw.author_id as string
+    let author = extractProfile(raw.profiles)
+    if (!author?.wallet_address) author = await fetchProfileById(authorId) ?? author
+    return {
+      id: raw.id as string,
+      type: 'post',
+      title: raw.title as string,
+      description: (raw.content as string | null)?.slice(0, 180) ?? null,
+      content: raw.content as string | null,
+      level: null,
+      price: raw.is_premium ? Number(raw.price ?? 0) : 0,
+      cover_image_url: raw.cover_image_url as string | null,
+      file_url: null,
+      tags: raw.tags as string[] | null,
+      language: raw.language as string | null,
+      category: (raw.content_category as ContentItem['category']) ?? 'language',
+      author_id: authorId,
+      author,
+      created_at: raw.created_at as string,
+      popularity: 0,
+    }
+  }
+
+  async function tryVideo(): Promise<ContentItem | null> {
+    try {
+      const { data: video } = await supabaseAdmin
+        .from('videos')
+        .select(`*, ${PROFILE_COLS}`)
+        .eq('id', id)
+        .maybeSingle()
+      if (!video) return null
+      const v = video as Record<string, unknown>
+      const creatorId = v.creator_id as string
+      let author = extractProfile(v.profiles)
+      if (!author?.wallet_address) author = await fetchProfileById(creatorId) ?? author
+      return {
+        id: v.id as string,
+        type: 'video',
+        title: v.title as string,
+        description: v.description as string | null,
+        level: v.level as string | null,
+        price: Number(v.price ?? 0),
+        cover_image_url: v.thumbnail_url as string | null,
+        file_url: null,
+        video_url: v.video_url as string | null,
+        tags: v.tags as string[] | null,
+        language: null,
+        category: (v.category as ContentItem['category']) ?? 'video',
+        author_id: creatorId,
+        author,
+        created_at: v.created_at as string,
+        popularity: 0,
+      }
+    } catch { return null }
+  }
+
+  async function tryMusic(): Promise<ContentItem | null> {
+    try {
+      const { data: music } = await supabaseAdmin
+        .from('music')
+        .select(`*, ${PROFILE_COLS}`)
+        .eq('id', id)
+        .maybeSingle()
+      if (!music) return null
+      const m = music as Record<string, unknown>
+      const creatorId = m.creator_id as string
+      let author = extractProfile(m.profiles)
+      if (!author?.wallet_address) author = await fetchProfileById(creatorId) ?? author
+      return {
+        id: m.id as string,
+        type: 'music',
+        title: m.title as string,
+        description: m.description as string | null,
+        level: null,
+        price: Number(m.price ?? 0),
+        cover_image_url: m.cover_image_url as string | null,
+        file_url: null,
+        audio_url: m.audio_url as string | null,
+        tags: m.tags as string[] | null,
+        language: null,
+        category: 'music',
+        author_id: creatorId,
+        author,
+        created_at: m.created_at as string,
+        popularity: 0,
+      }
+    } catch { return null }
+  }
+
   try {
+    // Try tables in type-hinted order; fall through on miss so a wrong ?type never 404s
+    const handlers: Record<string, () => Promise<ContentItem | null>> = {
+      book: tryBook,
+      post: tryPost,
+      video: tryVideo,
+      music: tryMusic,
+    }
+
     let item: ContentItem | null = null
-
-    // ── Book / lesson ──────────────────────────────────────────────────────
-    if (!type || type === 'book' || type === 'lesson') {
-      // Try FK join first; if profile is null fall back to manual lookup
-      const { data: book } = await supabaseAdmin
-        .from('books')
-        .select('*, profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (book) {
-        const rawBook = book as Record<string, unknown>
-        const ownerId = (rawBook.tutor_id ?? rawBook.author_id ?? '') as string
-        let author = extractProfile(rawBook.profiles)
-        // Fallback if join returned nothing (FK name mismatch)
-        if (!author?.wallet_address) {
-          author = await fetchProfileById(ownerId) ?? author
-        }
-        const contentType: ContentType = (rawBook.content_type as string) === 'lesson' ? 'lesson' : 'book'
-        item = {
-          id: rawBook.id as string,
-          type: contentType,
-          title: rawBook.title as string,
-          description: rawBook.description as string | null,
-          level: rawBook.level as string | null,
-          price: Number(rawBook.price ?? 0),
-          cover_image_url: rawBook.cover_image_url as string | null,
-          file_url: rawBook.file_url as string | null,
-          tags: rawBook.tags as string[] | null,
-          language: rawBook.language as string | null,
-          category: (rawBook.content_category as ContentItem['category']) ?? 'language',
-          author_id: ownerId,
-          author,
-          created_at: rawBook.created_at as string,
-          popularity: 0,
-        }
-      }
-    }
-
-    // ── Post ───────────────────────────────────────────────────────────────
-    if (!item && (!type || type === 'post')) {
-      const { data: post } = await supabaseAdmin
-        .from('posts')
-        .select('*, profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (post) {
-        const rawPost = post as Record<string, unknown>
-        const authorId = rawPost.author_id as string
-        let author = extractProfile(rawPost.profiles)
-        if (!author?.wallet_address) {
-          author = await fetchProfileById(authorId) ?? author
-        }
-        item = {
-          id: rawPost.id as string,
-          type: 'post',
-          title: rawPost.title as string,
-          description: (rawPost.content as string | null)?.slice(0, 180) ?? null,
-          content: rawPost.content as string | null,
-          level: null,
-          price: rawPost.is_premium ? Number(rawPost.price ?? 0) : 0,
-          cover_image_url: rawPost.cover_image_url as string | null,
-          file_url: null,
-          tags: rawPost.tags as string[] | null,
-          language: rawPost.language as string | null,
-          category: (rawPost.content_category as ContentItem['category']) ?? 'language',
-          author_id: authorId,
-          author,
-          created_at: rawPost.created_at as string,
-          popularity: 0,
-        }
-      }
-    }
-
-    // ── Video ──────────────────────────────────────────────────────────────
-    if (!item && (!type || type === 'video')) {
-      try {
-        const { data: video } = await supabaseAdmin
-          .from('videos')
-          .select('*, profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)')
-          .eq('id', id)
-          .maybeSingle()
-
-        if (video) {
-          const v = video as Record<string, unknown>
-          const creatorId = v.creator_id as string
-          let author = extractProfile(v.profiles)
-          if (!author?.wallet_address) {
-            author = await fetchProfileById(creatorId) ?? author
-          }
-          item = {
-            id: v.id as string,
-            type: 'video',
-            title: v.title as string,
-            description: v.description as string | null,
-            level: v.level as string | null,
-            price: Number(v.price ?? 0),
-            cover_image_url: v.thumbnail_url as string | null,
-            file_url: null,
-            video_url: v.video_url as string | null,
-            tags: v.tags as string[] | null,
-            language: null,
-            category: (v.category as ContentItem['category']) ?? 'video',
-            author_id: creatorId,
-            author,
-            created_at: v.created_at as string,
-            popularity: 0,
-          }
-        }
-      } catch { /* videos table may not exist */ }
-    }
-
-    // ── Music ──────────────────────────────────────────────────────────────
-    if (!item && (!type || type === 'music')) {
-      try {
-        const { data: music } = await supabaseAdmin
-          .from('music')
-          .select('*, profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)')
-          .eq('id', id)
-          .maybeSingle()
-
-        if (music) {
-          const m = music as Record<string, unknown>
-          const creatorId = m.creator_id as string
-          let author = extractProfile(m.profiles)
-          if (!author?.wallet_address) {
-            author = await fetchProfileById(creatorId) ?? author
-          }
-          item = {
-            id: m.id as string,
-            type: 'music',
-            title: m.title as string,
-            description: m.description as string | null,
-            level: null,
-            price: Number(m.price ?? 0),
-            cover_image_url: m.cover_image_url as string | null,
-            file_url: null,
-            audio_url: m.audio_url as string | null,
-            tags: m.tags as string[] | null,
-            language: null,
-            category: 'music',
-            author_id: creatorId,
-            author,
-            created_at: m.created_at as string,
-            popularity: 0,
-          }
-        }
-      } catch { /* music table may not exist */ }
+    for (const table of tableOrder()) {
+      item = await handlers[table]()
+      if (item) break
     }
 
     if (!item) return jsonError('Content not found', 404)

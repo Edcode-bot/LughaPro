@@ -43,13 +43,14 @@ export function LearnDetailClient({ id }: { id: string }) {
   const [purchaseTxHash, setPurchaseTxHash] = useState<string | null>(null);
   const [showFullContent, setShowFullContent] = useState(false);
 
-  // Load content
+  // Load content — type param is a hint for search order; API falls through all tables if not found
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams();
-    if (typeParam) params.set("type", typeParam);
-    fetch(`/api/content/${id}?${params.toString()}`)
+    const url = typeParam
+      ? `/api/content/${id}?type=${encodeURIComponent(typeParam)}`
+      : `/api/content/${id}`;
+    fetch(url)
       .then((r) => r.json() as Promise<ApiResponse>)
       .then((result) => {
         if (result.error || !result.data) {
