@@ -1,190 +1,170 @@
-import { NextRequest } from 'next/server'
-import { jsonError, jsonOk } from '@/lib/api'
-import { supabaseAdmin } from '@/lib/supabase'
-import { ContentItem, ContentType, Profile } from '@/types'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-// Extract a Profile from a Supabase joined row — handles both array and object shapes
-function extractProfile(raw: unknown): Profile | undefined {
-  if (!raw) return undefined
-  const p = Array.isArray(raw) ? raw[0] : raw
-  if (!p || typeof p !== 'object') return undefined
-  return p as Profile
+function serviceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 }
 
-// Fallback: fetch profile by id with manual query (avoids FK name dependency)
-async function fetchProfileById(id: string): Promise<Profile | undefined> {
-  if (!id) return undefined
-  const { data } = await supabaseAdmin
+async function fetchProfile(supabase: ReturnType<typeof serviceClient>, profileId: string) {
+  if (!profileId) return null
+  const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at')
+    .select('full_name, wallet_address, avatar_url')
+    .eq('id', profileId)
+    .maybeSingle()
+  return data
+}
+
+async function tryPost(supabase: ReturnType<typeof serviceClient>, id: string) {
+  const { data: post } = await supabase
+    .from('posts')
+    .select('id, title, content, cover_image_url, price, is_premium, tags, created_at, published, author_id')
     .eq('id', id)
     .maybeSingle()
-  return data as Profile | undefined
+
+  if (!post) return null
+
+  const profile = await fetchProfile(supabase, post.author_id)
+
+  return {
+    id: post.id,
+    title: post.title,
+    description: post.content?.slice(0, 150) ?? '',
+    content: post.content ?? '',
+    cover_image_url: post.cover_image_url ?? null,
+    file_url: null,
+    price: Number(post.price ?? 0),
+    is_free: !post.is_premium,
+    type: 'post' as const,
+    category: 'language',
+    level: 'All',
+    creator_name: profile?.full_name ?? 'Unknown',
+    creator_wallet_address: profile?.wallet_address ?? null,
+    creator_id: post.author_id ?? '',
+    created_at: post.created_at,
+  }
+}
+
+async function tryBook(supabase: ReturnType<typeof serviceClient>, id: string) {
+  const { data: book } = await supabase
+    .from('books')
+    .select('id, title, description, cover_image_url, file_url, price, is_free, level, tags, created_at, published, tutor_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!book) return null
+
+  const profile = await fetchProfile(supabase, book.tutor_id)
+
+  return {
+    id: book.id,
+    title: book.title,
+    description: book.description ?? '',
+    content: '',
+    cover_image_url: book.cover_image_url ?? null,
+    file_url: book.file_url ?? null,
+    price: Number(book.price ?? 0),
+    is_free: book.is_free ?? true,
+    type: 'book' as const,
+    category: 'language',
+    level: book.level ?? 'All',
+    creator_name: profile?.full_name ?? 'Unknown',
+    creator_wallet_address: profile?.wallet_address ?? null,
+    creator_id: book.tutor_id ?? '',
+    created_at: book.created_at,
+  }
+}
+
+async function tryVideo(supabase: ReturnType<typeof serviceClient>, id: string) {
+  const { data: video } = await supabase
+    .from('videos')
+    .select('id, title, description, thumbnail_url, video_url, price, is_free, category, level, tags, created_at, published, creator_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!video) return null
+
+  const profile = await fetchProfile(supabase, video.creator_id)
+
+  return {
+    id: video.id,
+    title: video.title,
+    description: video.description ?? '',
+    content: '',
+    cover_image_url: video.thumbnail_url ?? null,
+    file_url: video.video_url ?? null,
+    price: Number(video.price ?? 0),
+    is_free: video.is_free ?? true,
+    type: 'video' as const,
+    category: video.category ?? 'language',
+    level: video.level ?? 'N/A',
+    creator_name: profile?.full_name ?? 'Unknown',
+    creator_wallet_address: profile?.wallet_address ?? null,
+    creator_id: video.creator_id ?? '',
+    created_at: video.created_at,
+  }
+}
+
+async function tryMusic(supabase: ReturnType<typeof serviceClient>, id: string) {
+  const { data: music } = await supabase
+    .from('music')
+    .select('id, title, description, cover_image_url, audio_url, price, is_free, genre, tags, created_at, published, creator_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!music) return null
+
+  const profile = await fetchProfile(supabase, music.creator_id)
+
+  return {
+    id: music.id,
+    title: music.title,
+    description: music.description ?? '',
+    content: '',
+    cover_image_url: music.cover_image_url ?? null,
+    file_url: music.audio_url ?? null,
+    price: Number(music.price ?? 0),
+    is_free: music.is_free ?? true,
+    type: 'music' as const,
+    category: 'music',
+    level: 'N/A',
+    creator_name: profile?.full_name ?? 'Unknown',
+    creator_wallet_address: profile?.wallet_address ?? null,
+    creator_id: music.creator_id ?? '',
+    created_at: music.created_at,
+  }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
   const type = request.nextUrl.searchParams.get('type')
+  const supabase = serviceClient()
 
-  // Determine search order — hint type goes first, then all others as fallback
-  function tableOrder(): Array<'book' | 'post' | 'video' | 'music'> {
-    if (type === 'post') return ['post', 'book', 'video', 'music']
-    if (type === 'video') return ['video', 'book', 'post', 'music']
-    if (type === 'music') return ['music', 'book', 'post', 'video']
-    return ['book', 'post', 'video', 'music'] // default / lesson / no type
+  const tryFunctions = {
+    post: tryPost,
+    book: tryBook,
+    video: tryVideo,
+    music: tryMusic,
   }
 
-  const PROFILE_COLS = 'profiles(id, full_name, wallet_address, avatar_url, bio, country, languages, role, referral_code, created_at)'
+  // Build search order: hinted type first, then rest
+  const order = type && type in tryFunctions
+    ? [type, ...Object.keys(tryFunctions).filter(t => t !== type)]
+    : Object.keys(tryFunctions)
 
-  async function tryBook(): Promise<ContentItem | null> {
-    const { data: book } = await supabaseAdmin
-      .from('books')
-      .select(`*, ${PROFILE_COLS}`)
-      .eq('id', id)
-      .maybeSingle()
-    if (!book) return null
-    const raw = book as Record<string, unknown>
-    const ownerId = (raw.tutor_id ?? raw.author_id ?? '') as string
-    let author = extractProfile(raw.profiles)
-    if (!author?.wallet_address) author = await fetchProfileById(ownerId) ?? author
-    const contentType: ContentType = (raw.content_type as string) === 'lesson' ? 'lesson' : 'book'
-    return {
-      id: raw.id as string,
-      type: contentType,
-      title: raw.title as string,
-      description: raw.description as string | null,
-      level: raw.level as string | null,
-      price: Number(raw.price ?? 0),
-      cover_image_url: raw.cover_image_url as string | null,
-      file_url: raw.file_url as string | null,
-      tags: raw.tags as string[] | null,
-      language: raw.language as string | null,
-      category: (raw.content_category as ContentItem['category']) ?? 'language',
-      author_id: ownerId,
-      author,
-      created_at: raw.created_at as string,
-      popularity: 0,
+  for (const t of order) {
+    const fn = tryFunctions[t as keyof typeof tryFunctions]
+    const result = await fn(supabase, id)
+    if (result) {
+      return NextResponse.json({ data: result, error: null })
     }
   }
 
-  async function tryPost(): Promise<ContentItem | null> {
-    const { data: post } = await supabaseAdmin
-      .from('posts')
-      .select(`*, ${PROFILE_COLS}`)
-      .eq('id', id)
-      .maybeSingle()
-    if (!post) return null
-    const raw = post as Record<string, unknown>
-    const authorId = raw.author_id as string
-    let author = extractProfile(raw.profiles)
-    if (!author?.wallet_address) author = await fetchProfileById(authorId) ?? author
-    return {
-      id: raw.id as string,
-      type: 'post',
-      title: raw.title as string,
-      description: (raw.content as string | null)?.slice(0, 180) ?? null,
-      content: raw.content as string | null,
-      level: null,
-      price: raw.is_premium ? Number(raw.price ?? 0) : 0,
-      cover_image_url: raw.cover_image_url as string | null,
-      file_url: null,
-      tags: raw.tags as string[] | null,
-      language: raw.language as string | null,
-      category: (raw.content_category as ContentItem['category']) ?? 'language',
-      author_id: authorId,
-      author,
-      created_at: raw.created_at as string,
-      popularity: 0,
-    }
-  }
-
-  async function tryVideo(): Promise<ContentItem | null> {
-    try {
-      const { data: video } = await supabaseAdmin
-        .from('videos')
-        .select(`*, ${PROFILE_COLS}`)
-        .eq('id', id)
-        .maybeSingle()
-      if (!video) return null
-      const v = video as Record<string, unknown>
-      const creatorId = v.creator_id as string
-      let author = extractProfile(v.profiles)
-      if (!author?.wallet_address) author = await fetchProfileById(creatorId) ?? author
-      return {
-        id: v.id as string,
-        type: 'video',
-        title: v.title as string,
-        description: v.description as string | null,
-        level: v.level as string | null,
-        price: Number(v.price ?? 0),
-        cover_image_url: v.thumbnail_url as string | null,
-        file_url: null,
-        video_url: v.video_url as string | null,
-        tags: v.tags as string[] | null,
-        language: null,
-        category: (v.category as ContentItem['category']) ?? 'video',
-        author_id: creatorId,
-        author,
-        created_at: v.created_at as string,
-        popularity: 0,
-      }
-    } catch { return null }
-  }
-
-  async function tryMusic(): Promise<ContentItem | null> {
-    try {
-      const { data: music } = await supabaseAdmin
-        .from('music')
-        .select(`*, ${PROFILE_COLS}`)
-        .eq('id', id)
-        .maybeSingle()
-      if (!music) return null
-      const m = music as Record<string, unknown>
-      const creatorId = m.creator_id as string
-      let author = extractProfile(m.profiles)
-      if (!author?.wallet_address) author = await fetchProfileById(creatorId) ?? author
-      return {
-        id: m.id as string,
-        type: 'music',
-        title: m.title as string,
-        description: m.description as string | null,
-        level: null,
-        price: Number(m.price ?? 0),
-        cover_image_url: m.cover_image_url as string | null,
-        file_url: null,
-        audio_url: m.audio_url as string | null,
-        tags: m.tags as string[] | null,
-        language: null,
-        category: 'music',
-        author_id: creatorId,
-        author,
-        created_at: m.created_at as string,
-        popularity: 0,
-      }
-    } catch { return null }
-  }
-
-  try {
-    // Try tables in type-hinted order; fall through on miss so a wrong ?type never 404s
-    const handlers: Record<string, () => Promise<ContentItem | null>> = {
-      book: tryBook,
-      post: tryPost,
-      video: tryVideo,
-      music: tryMusic,
-    }
-
-    let item: ContentItem | null = null
-    for (const table of tableOrder()) {
-      item = await handlers[table]()
-      if (item) break
-    }
-
-    if (!item) return jsonError('Content not found', 404)
-    return jsonOk(item, 'Content loaded')
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : 'Unable to load content', 500)
-  }
+  return NextResponse.json({ data: null, error: 'Content not found' }, { status: 404 })
 }

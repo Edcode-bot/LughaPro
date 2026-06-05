@@ -136,6 +136,7 @@ export type ContentItem = {
   content?: string | null
   level: string | null
   price: number
+  is_free?: boolean
   cover_image_url: string | null
   file_url: string | null
   video_url?: string | null
@@ -144,8 +145,13 @@ export type ContentItem = {
   tags: string[] | null
   language: string | null
   category?: ContentCategory | null
-  author_id: string
+  // legacy nested shape (list API)
+  author_id?: string
   author?: Profile
+  // flat shape returned by detail API
+  creator_id?: string
+  creator_name?: string
+  creator_wallet_address?: string | null
   created_at: string
   popularity?: number
 }

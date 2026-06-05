@@ -129,8 +129,10 @@ export function LearnDetailClient({ id }: { id: string }) {
   }
 
   const free = isFreeContent(item);
-  const creator = item.author?.full_name ?? "Creator";
-  const creatorWallet = item.author?.wallet_address?.toLowerCase();
+  // Support both flat (detail API) and nested (legacy) shape
+  const creator = item.creator_name ?? item.author?.full_name ?? "Creator";
+  const rawWallet = item.creator_wallet_address ?? item.author?.wallet_address;
+  const creatorWallet = rawWallet?.toLowerCase();
   const validCreator =
     creatorWallet && isAddress(creatorWallet) ? (creatorWallet as `0x${string}`) : null;
   const hasAccess = purchased === true || showFullContent;
@@ -209,8 +211,8 @@ export function LearnDetailClient({ id }: { id: string }) {
             )}
             <div>
               <p className="font-bold text-forest">{creator}</p>
-              {item.author_id ? (
-                <Link href={`/tutor/${item.author_id}`} className="text-sm font-semibold text-jade hover:underline">
+              {(item.author_id ?? item.creator_id) ? (
+                <Link href={`/tutor/${item.author_id ?? item.creator_id}`} className="text-sm font-semibold text-jade hover:underline">
                   View profile →
                 </Link>
               ) : null}
@@ -334,34 +336,37 @@ export function LearnDetailClient({ id }: { id: string }) {
                 </div>
               ) : null}
 
-              {/* Video player */}
-              {item.type === "video" && item.video_url ? (
+              {/* Video player — supports both video_url (legacy) and file_url (new API) */}
+              {item.type === "video" && (item.video_url ?? item.file_url) ? (
                 <div className="mt-2 overflow-hidden rounded-2xl bg-[#171717]">
-                  {item.video_url.includes("youtube.com") || item.video_url.includes("youtu.be") || item.video_url.includes("vimeo.com") ? (
-                    <iframe
-                      src={item.video_url.replace("watch?v=", "embed/")}
-                      className="aspect-video w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    // eslint-disable-next-line jsx-a11y/media-has-caption
-                    <video src={item.video_url} controls className="w-full rounded-2xl" />
-                  )}
+                  {(() => {
+                    const src = item.video_url ?? item.file_url ?? ''
+                    return src.includes("youtube.com") || src.includes("youtu.be") || src.includes("vimeo.com") ? (
+                      <iframe
+                        src={src.replace("watch?v=", "embed/")}
+                        className="aspect-video w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption
+                      <video src={src} controls className="w-full rounded-2xl" />
+                    )
+                  })()}
                 </div>
               ) : item.type === "video" ? (
                 <p className="mt-4 text-foreground/60">Video file not available.</p>
               ) : null}
 
-              {/* Audio player */}
-              {item.type === "music" && item.audio_url ? (
+              {/* Audio player — supports both audio_url (legacy) and file_url (new API) */}
+              {item.type === "music" && (item.audio_url ?? item.file_url) ? (
                 <div className="mt-2 rounded-2xl bg-white p-6 shadow-sm">
                   {item.description ? (
                     <p className="mb-4 leading-relaxed text-foreground/75">{item.description}</p>
                   ) : null}
                   {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                   <audio
-                    src={item.audio_url}
+                    src={item.audio_url ?? item.file_url ?? ''}
                     controls
                     className="w-full accent-[#FFBF00]"
                   />
