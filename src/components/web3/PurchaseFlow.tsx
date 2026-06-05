@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { parseUnits, parseEther, keccak256, stringToHex, encodePacked, formatUnits } from 'viem'
 import { useWriteContract, useReadContract, useAccount, usePublicClient, useBalance } from 'wagmi'
-import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_ABI, LUGHA_PAYMENT_V2_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
+import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_V2_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
 import { ContentType } from '@/types'
 
 type PaymentToken = 'cusd' | 'usdt' | 'celo'
@@ -42,8 +42,6 @@ export function PurchaseFlow({
   const [payToken, setPayToken] = useState<PaymentToken>('cusd')
   const { writeContractAsync } = useWriteContract()
 
-  const useV2 = !!CONTRACT_ADDRESSES.celo.LughaPaymentV2
-
   // Token balances
   const { data: cusdBalance } = useReadContract({
     address: CONTRACT_ADDRESSES.celo.cUSD,
@@ -58,12 +56,12 @@ export function PurchaseFlow({
     abi: USDT_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address && useV2 },
+    query: { enabled: !!address },
   })
 
   const { data: celoBalanceData } = useBalance({
     address: address ?? undefined,
-    query: { enabled: !!address && useV2 },
+    query: { enabled: !!address },
   })
 
   const amount = parseUnits(priceUSD.toString(), 18)
@@ -93,27 +91,29 @@ export function PurchaseFlow({
 
       let hash: `0x${string}`
 
-      if (useV2 && payToken === 'celo') {
-        // Native CELO purchase (no approval needed)
+      if (payToken === 'celo') {
+        // Native CELO — no approval needed
         setStep('purchasing')
         hash = await writeContractAsync({
           address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
           abi: LUGHA_PAYMENT_V2_ABI,
           functionName: 'purchaseWithCELO',
-          args: [purchaseId, creatorAddress, contentIdBytes],
-          value: amount,
+          args: [purchaseId, creatorAddress as `0x${string}`, contentIdBytes],
+          value: parseEther(priceUSD.toString()),
+          chainId: 42220,
         })
-      } else if (useV2 && (payToken === 'cusd' || payToken === 'usdt')) {
-        const tokenAddress = payToken === 'usdt' ? CONTRACT_ADDRESSES.celo.USDT : CONTRACT_ADDRESSES.celo.cUSD
+      } else {
+        // cUSD or USDT — approve then purchaseWithToken
+        const paymentToken = payToken === 'usdt' ? CONTRACT_ADDRESSES.celo.USDT : CONTRACT_ADDRESSES.celo.cUSD
         const tokenAbi = payToken === 'usdt' ? USDT_ABI : CUSD_ABI
 
-        // Approve token spend
         setStep('approving')
         const approveHash = await writeContractAsync({
-          address: tokenAddress,
+          address: paymentToken,
           abi: tokenAbi,
           functionName: 'approve',
           args: [CONTRACT_ADDRESSES.celo.LughaPaymentV2, amount],
+          chainId: 42220,
         })
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
 
@@ -122,25 +122,8 @@ export function PurchaseFlow({
           address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
           abi: LUGHA_PAYMENT_V2_ABI,
           functionName: 'purchaseWithToken',
-          args: [purchaseId, creatorAddress, contentIdBytes, amount, tokenAddress],
-        })
-      } else {
-        // V1 fallback: cUSD via LughaPayment
-        setStep('approving')
-        const approveHash = await writeContractAsync({
-          address: CONTRACT_ADDRESSES.celo.cUSD,
-          abi: CUSD_ABI,
-          functionName: 'approve',
-          args: [CONTRACT_ADDRESSES.celo.LughaPayment, amount],
-        })
-        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
-
-        setStep('purchasing')
-        hash = await writeContractAsync({
-          address: CONTRACT_ADDRESSES.celo.LughaPayment,
-          abi: LUGHA_PAYMENT_ABI,
-          functionName: 'purchaseContent',
-          args: [purchaseId, creatorAddress, contentIdBytes, amount],
+          args: [purchaseId, creatorAddress as `0x${string}`, contentIdBytes, amount, paymentToken],
+          chainId: 42220,
         })
       }
 
@@ -216,28 +199,26 @@ export function PurchaseFlow({
         <span className="font-black text-[#1a4731]">{priceUSD} USD</span>
       </div>
 
-      {/* Token selector — only show if V2 is deployed */}
-      {useV2 ? (
-        <div className="mt-4">
-          <p className="mb-2 text-xs font-semibold text-foreground/55">Pay with</p>
-          <div className="flex gap-2">
-            {(['cusd', 'usdt', 'celo'] as PaymentToken[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setPayToken(t)}
-                className={`flex-1 rounded-xl border py-2 text-sm font-bold transition ${
-                  payToken === t
-                    ? 'border-[#FFBF00] bg-[#FFBF00] text-[#171717]'
-                    : 'border-gray-200 text-gray-500 hover:border-[#171717]'
-                }`}
-              >
-                {tokenLabel(t)}
-              </button>
-            ))}
-          </div>
+      {/* Token selector */}
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-semibold text-foreground/55">Pay with</p>
+        <div className="flex gap-2">
+          {(['cusd', 'usdt', 'celo'] as PaymentToken[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setPayToken(t)}
+              className={`flex-1 rounded-xl border py-2 text-sm font-bold transition ${
+                payToken === t
+                  ? 'border-[#FFBF00] bg-[#FFBF00] text-[#171717]'
+                  : 'border-gray-200 text-gray-500 hover:border-[#171717]'
+              }`}
+            >
+              {tokenLabel(t)}
+            </button>
+          ))}
         </div>
-      ) : null}
+      </div>
 
       {/* Balance row */}
       <div className="mt-3 flex items-center justify-between rounded-xl bg-[#fdf6e3] px-4 py-2 text-sm">
@@ -291,7 +272,7 @@ export function PurchaseFlow({
         {step === 'idle' || step === 'error' ? `Pay ${priceUSD} ${tokenLabel(payToken)}` : 'Processing…'}
       </button>
       <p className="mt-2 text-center text-xs text-foreground/40">
-        Powered by LughaPayment · Celo blockchain
+        Powered by LughaPaymentV2 · Celo blockchain
       </p>
     </div>
   )

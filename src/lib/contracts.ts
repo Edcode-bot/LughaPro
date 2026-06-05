@@ -1,9 +1,9 @@
 export const CONTRACT_ADDRESSES = {
   celo: {
     LughaPayment: '0xFaBAC9A356C001dC3B32352e9b0f0B4D7c171B41' as `0x${string}`,
-    LughaPaymentV2: '' as `0x${string}`, // fill after deploy
-    LughaReferral: '0x385ba479dbEFcF3c4b0e5d0f778A43370c9e05B5' as `0x${string}`,
-    LughaCertificate: '0x0CbE851a9E6f9aCBCC2B78Ada127001422B686af' as `0x${string}`,
+    LughaPaymentV2: '0x99e6eaf7952b9c45658C69f0999Ac8503989B003' as `0x${string}`,
+    LughaReferral: '0x0EBD10ce94576D523Dcb13BA3b4Fb48d4a49b221' as `0x${string}`,
+    LughaCertificate: '0xcc908CF79314335BAd128dEBfA929B6E99c94F7F' as `0x${string}`,
     cUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as `0x${string}`,
     USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e' as `0x${string}`,
   }

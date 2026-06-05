@@ -265,18 +265,18 @@ export function useWithdrawCeloEarnings() {
 
 export function useCreatorBalances(creatorAddress: `0x${string}` | undefined) {
   const tokenBalance = useReadContract({
-    address: CONTRACTS.LughaPaymentV2 || undefined,
+    address: CONTRACTS.LughaPaymentV2,
     abi: LUGHA_PAYMENT_V2_ABI,
     functionName: 'getCreatorTokenBalance',
     args: creatorAddress ? [creatorAddress] : undefined,
-    query: { enabled: !!creatorAddress && !!CONTRACTS.LughaPaymentV2 },
+    query: { enabled: !!creatorAddress },
   })
   const celoBalance = useReadContract({
-    address: CONTRACTS.LughaPaymentV2 || undefined,
+    address: CONTRACTS.LughaPaymentV2,
     abi: LUGHA_PAYMENT_V2_ABI,
     functionName: 'getCreatorCeloBalance',
     args: creatorAddress ? [creatorAddress] : undefined,
-    query: { enabled: !!creatorAddress && !!CONTRACTS.LughaPaymentV2 },
+    query: { enabled: !!creatorAddress },
   })
   return { tokenBalance: tokenBalance.data, celoBalance: celoBalance.data }
 }
@@ -286,7 +286,7 @@ export function useCreatorBalances(creatorAddress: `0x${string}` | undefined) {
 export function useHasPurchased(buyerAddress: `0x${string}` | undefined, contentId: string) {
   const contentIdBytes = contentId ? keccak256(stringToHex(contentId)) : ('0x' + '0'.repeat(64) as `0x${string}`)
   return useReadContract({
-    address: CONTRACTS.LughaPaymentV2 || CONTRACTS.LughaPayment,
+    address: CONTRACTS.LughaPaymentV2,
     abi: LUGHA_PAYMENT_V2_ABI,
     functionName: 'hasPurchased',
     args: buyerAddress ? [buyerAddress, contentIdBytes] : undefined,
@@ -316,9 +316,9 @@ export function useUsdtBalance(address: `0x${string}` | undefined) {
 
 export function useCreatorEarnings(creatorAddress: `0x${string}` | undefined) {
   return useReadContract({
-    address: CONTRACTS.LughaPayment,
-    abi: LUGHA_PAYMENT_ABI,
-    functionName: 'getCreatorBalance',
+    address: CONTRACTS.LughaPaymentV2,
+    abi: LUGHA_PAYMENT_V2_ABI,
+    functionName: 'getCreatorTokenBalance',
     args: creatorAddress ? [creatorAddress] : undefined,
     query: { enabled: !!creatorAddress }
   })
@@ -330,9 +330,9 @@ export function useWithdrawEarnings() {
 
   async function withdraw() {
     const hash = await writeContractAsync({
-      address: CONTRACTS.LughaPayment,
-      abi: LUGHA_PAYMENT_ABI,
-      functionName: 'withdrawEarnings',
+      address: CONTRACTS.LughaPaymentV2,
+      abi: LUGHA_PAYMENT_V2_ABI,
+      functionName: 'withdrawTokenEarnings',
       args: [],
     })
     if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
