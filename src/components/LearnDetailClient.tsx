@@ -156,16 +156,14 @@ export function LearnDetailClient({ id }: { id: string }) {
               />
             ) : (
               <div
-                className="flex h-full w-full items-center justify-center text-7xl"
+                className="h-full w-full"
                 style={{
                   background:
                     item.type === "post"
-                      ? "linear-gradient(135deg, #FFBF00, #ff8c00)"
+                      ? "linear-gradient(135deg, #FFBF00, #e6ac00)"
                       : "linear-gradient(135deg, #1a4731, #2d6a4f)",
                 }}
-              >
-                {item.type === "post" ? "📝" : "📚"}
-              </div>
+              />
             )}
           </div>
 

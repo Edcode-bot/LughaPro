@@ -30,16 +30,14 @@ export function ContentCard({ item }: ContentCardProps) {
           />
         ) : (
           <div
-            className="flex h-40 w-full items-center justify-center rounded-t-2xl text-4xl"
+            className="h-40 w-full rounded-t-2xl"
             style={{
               background:
                 item.type === "post"
-                  ? "linear-gradient(135deg, #FFBF00, #ff8c00)"
+                  ? "linear-gradient(135deg, #FFBF00, #e6ac00)"
                   : "linear-gradient(135deg, #1a4731, #2d6a4f)",
             }}
-          >
-            {item.type === "post" ? "📝" : "📚"}
-          </div>
+          />
         )}
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold text-forest">
           {contentTypeLabel(item.type)}

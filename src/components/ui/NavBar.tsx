@@ -25,19 +25,13 @@ export function NavBar() {
     { label: "About", href: "/about" },
   ];
 
-  const studentLinks = [
+  const connectedLinks = [
     { label: "Learn", href: "/learn" },
     { label: "My Library", href: "/library" },
     { label: "Find Tutors", href: "/tutors" },
   ];
 
-  const tutorLinks = [
-    { label: "Learn", href: "/learn" },
-    { label: "My Content", href: "/my-content" },
-    { label: "Publish", href: "/publish" },
-  ];
-
-  const centerLinks = !isConnected ? publicLinks : role === "tutor" ? tutorLinks : studentLinks;
+  const centerLinks = isConnected ? connectedLinks : publicLinks;
 
   const studentMenu = [
     ["Dashboard", "/dashboard"],
@@ -63,16 +57,16 @@ export function NavBar() {
             <Image
               src="/logo.png"
               alt="LughaPro"
-              width={120}
-              height={40}
-              className="h-8 w-auto object-contain"
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-lg object-contain"
               priority
             />
           </Link>
 
           <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
             {centerLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm font-semibold text-forest/80 hover:text-forest">
+              <Link key={link.href} href={link.href} className="text-sm font-semibold text-[#171717] hover:text-[#1a4731]">
                 {link.label}
               </Link>
             ))}
