@@ -15,50 +15,28 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { NavBar } from "@/components/ui/NavBar";
 import { useAuth } from "@/hooks/useAuth";
-import { readLughaRole } from "@/lib/profile-storage";
 import { initials } from "@/lib/content";
 import { shortenAddress } from "@/lib/minipay";
-import { UserRole } from "@/types";
 
-const studentLinks = [
+const allLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/library", label: "My Library", icon: BookOpen },
   { href: "/learn", label: "Browse Content", icon: Home },
+  { href: "/my-content", label: "My Content", icon: FileText },
+  { href: "/publish", label: "Publish", icon: PenSquare },
+  { href: "/earnings", label: "Earnings", icon: BarChart3 },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/certificates", label: "Certificates", icon: Award },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-const tutorLinks = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/my-content", label: "My Content", icon: FileText },
-  { href: "/publish", label: "Publish Content", icon: PenSquare },
-  { href: "/earnings", label: "Earnings", icon: BarChart3 },
-  { href: "/wallet", label: "Wallet", icon: Wallet },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
-
-export function DashboardLayout({
-  children,
-  role: roleOverride,
-}: {
-  children: ReactNode;
-  role?: UserRole;
-}) {
+export function DashboardLayout({ children }: { children: ReactNode; role?: string }) {
   const pathname = usePathname();
-  const { displayName, address, role: authRole, disconnect } = useAuth();
-  const [storedRole, setStoredRole] = useState<UserRole | null>(null);
-
-  useEffect(() => {
-    setStoredRole(readLughaRole());
-  }, [authRole]);
-
-  const role = roleOverride ?? storedRole ?? authRole;
-  const links = role === "tutor" || role === "admin" ? tutorLinks : studentLinks;
+  const { displayName, address, disconnect } = useAuth();
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -76,7 +54,7 @@ export function DashboardLayout({
           </div>
 
           <nav className="mt-8 flex flex-1 flex-col gap-1">
-            {links.map((link) => {
+            {allLinks.map((link) => {
               const active = pathname === link.href;
               const Icon = link.icon;
               return (

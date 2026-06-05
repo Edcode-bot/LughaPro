@@ -1,11 +1,13 @@
-﻿'use client'
+'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isAddress } from 'viem'
+import { injected } from 'wagmi/connectors'
+import { useConnect } from 'wagmi'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/hooks/useAuth'
 import { useRegisterReferral } from '@/hooks/useContracts'
@@ -14,7 +16,7 @@ const REFERRER_STORAGE_KEY = 'lugha_referrer'
 import { saveStoredProfile } from '@/lib/profile-storage'
 import { Profile } from '@/types'
 
-type Step = 'connect' | 'role'
+type Step = 'connect' | 'role' | 'checking'
 type WalletLoginResponse = {
   data?: { profile?: unknown; isNew?: boolean }
   profile?: unknown
@@ -52,6 +54,7 @@ const walletOptions = [
 export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter()
   const { address, isConnected, isLoading, connectMetaMask, connectWalletConnect, connectBrowserWallet, setProfile } = useAuth()
+  const { connect } = useConnect()
   const { toast } = useToast()
   const { registerReferral } = useRegisterReferral()
   const [step, setStep] = useState<Step>('connect')
@@ -59,6 +62,17 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
   const [error, setError] = useState<string | null>(null)
   const [selectedRole, setSelectedRole] = useState<'student' | 'tutor' | null>(null)
   const [storedName, setStoredName] = useState('')
+  const autoConnectDone = useRef(false)
+
+  // MiniPay auto-connect — runs once on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (autoConnectDone.current) return
+    if ((window as { ethereum?: { isMiniPay?: boolean } }).ethereum?.isMiniPay === true) {
+      autoConnectDone.current = true
+      connect({ connector: injected() })
+    }
+  }, [connect])
 
   useEffect(() => {
     if (!open || typeof window === 'undefined') return
@@ -83,13 +97,9 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
     if (open) {
       setError(null)
       setSelectedRole(null)
-      setStep(isConnected ? 'role' : 'connect')
+      setStep(isConnected ? 'checking' : 'connect')
     }
   }, [open, isConnected])
-
-  useEffect(() => {
-    if (open && isConnected && address) setStep('role')
-  }, [open, isConnected, address])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -99,15 +109,64 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
     }
   }, [open])
 
-  async function finish() {
-    if (!address || !selectedRole) return
-    setSubmitting(true)
+  // When wallet connects, check if user is existing or new
+  useEffect(() => {
+    if (!open || !isConnected || !address) return
+    void handleConnected()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isConnected, address])
+
+  async function handleConnected() {
+    if (!address) return
+
+    // If stored role exists, just log in and redirect
+    const storedRole = (typeof window !== 'undefined' ? localStorage.getItem('lugha_role') : null) as 'student' | 'tutor' | null
+    if (storedRole) {
+      await doLogin(storedRole, true)
+      return
+    }
+
+    // No stored role — call wallet-login to check if user already exists
+    setStep('checking')
+    try {
+      const response = await fetch('/api/auth/wallet-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: address }),
+      })
+      const result = (await response.json()) as WalletLoginResponse
+      const isNew = result.data?.isNew ?? result.isNew
+      const profile = (result.data?.profile ?? result.profile) as Profile | undefined
+
+      if (!isNew) {
+        // Existing user — save profile and go to dashboard
+        if (profile && address) {
+          const role = (profile as Profile & { role?: string }).role as 'student' | 'tutor' | undefined
+          if (role) localStorage.setItem('lugha_role', role)
+          localStorage.setItem('lugha_profile', JSON.stringify(profile))
+          saveStoredProfile(address, profile)
+          setProfile(profile)
+        }
+        onClose()
+        router.push('/dashboard')
+      } else {
+        // Brand new user — show role selector
+        setStep('role')
+      }
+    } catch {
+      setStep('role')
+    }
+  }
+
+  async function doLogin(role: 'student' | 'tutor', silent = false) {
+    if (!address) return
+    if (!silent) setSubmitting(true)
     setError(null)
     try {
       const response = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: address, role: selectedRole }),
+        body: JSON.stringify({ wallet_address: address, role }),
       })
       const result = (await response.json()) as WalletLoginResponse
       const profile = (result.data?.profile ?? result.profile) as Profile | undefined
@@ -115,45 +174,51 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
         throw new Error(result.error ?? 'Unable to create wallet profile')
       }
       if (profile && address) {
-        const profileWithRole = { ...profile, role: selectedRole }
-        localStorage.setItem('lugha_role', selectedRole)
+        const profileWithRole = { ...profile, role }
+        localStorage.setItem('lugha_role', role)
         localStorage.setItem('lugha_profile', JSON.stringify(profileWithRole))
-        console.log('Role saved:', selectedRole)
         saveStoredProfile(address, profileWithRole)
         setProfile(profileWithRole)
       }
 
       const storedReferrer = localStorage.getItem(REFERRER_STORAGE_KEY)?.toLowerCase()
-      if (
-        storedReferrer &&
-        isAddress(storedReferrer) &&
-        storedReferrer !== address.toLowerCase()
-      ) {
+      if (storedReferrer && isAddress(storedReferrer) && storedReferrer !== address.toLowerCase()) {
         try {
           await registerReferral(storedReferrer as `0x${string}`)
           localStorage.removeItem(REFERRER_STORAGE_KEY)
-          toast({
-            title: 'Referral registered!',
-            description: 'Your referrer will be rewarded when you make your first purchase.',
-            type: 'success',
-          })
+          toast({ title: 'Referral registered!', description: 'Your referrer will be rewarded when you make your first purchase.', type: 'success' })
         } catch {
           // User may already be referred — do not block onboarding
         }
       }
 
-      toast({
-        title: 'Welcome to LughaPro! 🎉',
-        description: 'Complete your profile to get started.',
-        type: 'success',
-      })
+      if (!silent) {
+        toast({ title: 'Welcome to LughaPro! 🎉', description: 'Complete your profile to get started.', type: 'success' })
+      }
       onClose()
       router.push(profile?.onboarding_completed ? '/dashboard' : '/onboarding')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to connect wallet')
+      setStep('role')
     } finally {
-      setSubmitting(false)
+      if (!silent) setSubmitting(false)
     }
+  }
+
+  async function finish() {
+    if (!address || !selectedRole) return
+    setSubmitting(true)
+    await doLogin(selectedRole, false)
+    setSubmitting(false)
+  }
+
+  // Inside MiniPay and already connected — don't render the modal at all
+  if (
+    typeof window !== 'undefined' &&
+    (window as { ethereum?: { isMiniPay?: boolean } }).ethereum?.isMiniPay === true &&
+    isConnected
+  ) {
+    return null
   }
 
   return (
@@ -186,6 +251,11 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                 <>
                   <h2 className="mt-6 font-serif text-3xl font-black text-forest">Connect your wallet</h2>
                   <p className="mt-2 text-sm text-foreground/65">Use your wallet as your LughaPro account</p>
+                </>
+              ) : step === 'checking' ? (
+                <>
+                  <h2 className="mt-6 font-serif text-3xl font-black text-forest">Checking account…</h2>
+                  <p className="mt-2 text-sm text-foreground/65">One moment</p>
                 </>
               ) : (
                 <>
@@ -220,6 +290,10 @@ export function ConnectWalletModal({ open, onClose }: { open: boolean; onClose: 
                     </span>
                   </button>
                 ))}
+              </div>
+            ) : step === 'checking' ? (
+              <div className="mt-8 flex justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-gold border-t-transparent" />
               </div>
             ) : (
               <>

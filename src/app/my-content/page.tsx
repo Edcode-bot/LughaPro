@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
-import { TutorGuard } from '@/components/TutorGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
@@ -13,9 +12,7 @@ import { TutorContentItem } from '@/types'
 export default function MyContentPage() {
   return (
     <AuthGuard>
-      <TutorGuard>
-        <MyContentClient />
-      </TutorGuard>
+      <MyContentClient />
     </AuthGuard>
   )
 }

@@ -2,7 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceRoleClient } from '@/lib/supabase-service-role'
 
-type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' }
+type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' | null }
 
 function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   return NextResponse.json({
@@ -34,7 +34,9 @@ export async function POST(request: Request) {
     const supabase = createServiceRoleClient()
     const body = await request.json() as WalletLoginBody
     walletAddress = body.wallet_address?.toLowerCase() ?? ''
-    role = body.role === 'tutor' ? 'tutor' : 'student'
+    // Only override role if explicitly provided
+    role = body.role === 'tutor' ? 'tutor' : body.role === 'student' ? 'student' : 'student'
+    const roleProvided = body.role != null
 
     if (!walletAddress) {
       return NextResponse.json({ data: null, error: 'wallet_address is required' }, { status: 422 })
@@ -52,18 +54,15 @@ export async function POST(request: Request) {
     }
 
     if (existingProfile) {
-      if (role === 'tutor') {
+      const effectiveRole: 'student' | 'tutor' = roleProvided ? role : (existingProfile.role ?? 'student')
+      if (roleProvided && role !== existingProfile.role) {
+        await supabase.from('profiles').update({ role: effectiveRole }).eq('id', existingProfile.id)
+      }
+      if (effectiveRole === 'tutor') {
         await ensureTutorRow(supabase, existingProfile.id)
       }
-      const { data: updatedProfile } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', existingProfile.id)
-        .select('*')
-        .single()
-
       return NextResponse.json({
-        data: { profile: updatedProfile ?? { ...existingProfile, role }, isNew: false },
+        data: { profile: { ...existingProfile, role: effectiveRole }, isNew: false },
         error: null,
       })
     }

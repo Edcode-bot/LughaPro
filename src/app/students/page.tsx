@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
-import { TutorGuard } from '@/components/TutorGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
@@ -13,9 +12,7 @@ import { TutorStudent } from '@/types'
 export default function StudentsPage() {
   return (
     <AuthGuard>
-      <TutorGuard>
-        <StudentsClient />
-      </TutorGuard>
+      <StudentsClient />
     </AuthGuard>
   )
 }

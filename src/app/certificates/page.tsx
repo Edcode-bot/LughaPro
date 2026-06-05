@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { ExternalLink, Share2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
-import { StudentGuard } from '@/components/StudentGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
@@ -149,9 +148,7 @@ function CertificatesClient() {
 export default function CertificatesPage() {
   return (
     <AuthGuard>
-      <StudentGuard>
-        <CertificatesClient />
-      </StudentGuard>
+      <CertificatesClient />
     </AuthGuard>
   )
 }

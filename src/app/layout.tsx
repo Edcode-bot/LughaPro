@@ -23,6 +23,10 @@ export const metadata: Metadata = {
     shortcut: '/favicon.svg',
     apple: '/favicon.png',
   },
+  verification: {
+    // TODO: Replace 'your-google-verification-code-here' with actual code from Search Console
+    google: 'your-google-verification-code-here',
+  },
   other: {
     'talentapp:project_verification':
       'b6f005b5b6023aba8fc8ce1426aecaaa5069931a78cb6f05c6535b65687eb21c8d50c3e058b3170706f1d9e81875951dcf3578f4dff68a212c9aa397bfc8426e',

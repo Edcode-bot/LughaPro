@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
-import { TutorGuard } from '@/components/TutorGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
@@ -14,9 +13,7 @@ import { EarningsSummary } from '@/types'
 export default function EarningsPage() {
   return (
     <AuthGuard>
-      <TutorGuard>
-        <EarningsClient />
-      </TutorGuard>
+      <EarningsClient />
     </AuthGuard>
   )
 }
