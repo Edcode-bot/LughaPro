@@ -2,7 +2,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceRoleClient } from '@/lib/supabase-service-role'
 
-type WalletLoginBody = { wallet_address?: string; role?: 'student' | 'tutor' | null }
+type WalletLoginBody = {
+  wallet_address?: string
+  address?: string        // alias accepted from Privy
+  privy_user_id?: string  // fallback identifier for email-only users
+  role?: 'student' | 'tutor' | null
+}
 
 function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
   return NextResponse.json({
@@ -33,7 +38,8 @@ export async function POST(request: Request) {
   try {
     const supabase = createServiceRoleClient()
     const body = await request.json() as WalletLoginBody
-    walletAddress = body.wallet_address?.toLowerCase() ?? ''
+    // Accept wallet_address, address (Privy alias), or derive from privy_user_id
+    walletAddress = (body.wallet_address ?? body.address ?? body.privy_user_id ?? '').toLowerCase()
     // Only override role if explicitly provided
     role = body.role === 'tutor' ? 'tutor' : body.role === 'student' ? 'student' : 'student'
     const roleProvided = body.role != null

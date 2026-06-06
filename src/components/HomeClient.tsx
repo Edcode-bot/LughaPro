@@ -31,7 +31,7 @@ const CATEGORIES = [
     icon: "🗣️",
     name: "Language",
     slug: "language",
-    desc: "Learn Kiswahili and other African languages from native speakers",
+    desc: "Learn African languages from native speakers — Kiswahili, Yoruba, Amharic, and more",
   },
   {
     icon: "🎵",

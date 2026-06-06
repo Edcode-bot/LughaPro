@@ -5,7 +5,6 @@ import { ChevronDown, Menu, Search, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { SearchOverlay } from "@/components/ui/SearchOverlay";
 import { initials } from "@/lib/content";
@@ -16,8 +15,7 @@ export function NavBar() {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
-  const { isConnected, displayName, address, role, disconnect } = useAuth();
+  const { isConnected, displayName, address, role, disconnect, login } = useAuth();
 
   const publicLinks = [
     { label: "Explore", href: "/explore" },
@@ -129,14 +127,14 @@ export function NavBar() {
               <>
                 <button
                   type="button"
-                  onClick={() => setWalletOpen(true)}
+                  onClick={() => login()}
                   className="min-h-11 rounded-full px-4 py-2 text-sm font-semibold text-forest hover:bg-off-white"
                 >
                   Sign In
                 </button>
                 <button
                   type="button"
-                  onClick={() => setWalletOpen(true)}
+                  onClick={() => login()}
                   className="min-h-11 rounded-full bg-gold px-5 py-2.5 text-sm font-bold text-foreground hover:bg-[#e6ac00]"
                 >
                   Get Started
@@ -149,7 +147,7 @@ export function NavBar() {
             {!isConnected ? (
               <button
                 type="button"
-                onClick={() => setWalletOpen(true)}
+                onClick={() => login()}
                 className="min-h-11 rounded-full bg-gold px-4 py-2 text-xs font-bold text-foreground"
               >
                 Connect
@@ -227,7 +225,7 @@ export function NavBar() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                setWalletOpen(true);
+                login();
               }}
               className="mt-4 min-h-11 rounded-full bg-gold px-6 py-3 font-bold text-foreground"
             >
@@ -238,7 +236,6 @@ export function NavBar() {
       </div>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
     </>
   );
 }

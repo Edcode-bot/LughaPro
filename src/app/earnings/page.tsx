@@ -11,6 +11,7 @@ import { shortenAddress } from '@/lib/minipay'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/Toast'
 import { useCreatorBalances, useWithdrawTokenEarnings, useWithdrawCeloEarnings } from '@/hooks/useContracts'
+import { WalletRequired } from '@/components/WalletRequired'
 import { EarningsSummary } from '@/types'
 
 export default function EarningsPage() {
@@ -86,15 +87,17 @@ function EarningsClient() {
               <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Token Earnings (cUSD)</p>
               <p className="mt-2 font-serif text-3xl font-black text-[#1a4731]">{tokenBalanceFmt}</p>
               <p className="text-sm text-foreground/50">cUSD on-chain</p>
-              <button
-                type="button"
-                onClick={() => void handleWithdrawToken()}
-                disabled={!hasTokenEarnings || withdrawingToken}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#FFBF00] px-5 py-2 text-sm font-black text-[#171717] disabled:opacity-40"
-              >
-                {withdrawingToken && <Loader2 className="h-4 w-4 animate-spin" />}
-                Withdraw cUSD
-              </button>
+              <WalletRequired>
+                <button
+                  type="button"
+                  onClick={() => void handleWithdrawToken()}
+                  disabled={!hasTokenEarnings || withdrawingToken}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#FFBF00] px-5 py-2 text-sm font-black text-[#171717] disabled:opacity-40"
+                >
+                  {withdrawingToken && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Withdraw cUSD
+                </button>
+              </WalletRequired>
             </div>
 
             {/* CELO earnings */}
@@ -102,15 +105,17 @@ function EarningsClient() {
               <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">CELO Earnings</p>
               <p className="mt-2 font-serif text-3xl font-black text-[#1a4731]">{celoBalanceFmt}</p>
               <p className="text-sm text-foreground/50">CELO on-chain</p>
-              <button
-                type="button"
-                onClick={() => void handleWithdrawCelo()}
-                disabled={!hasCeloEarnings || withdrawingCelo}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1a4731] px-5 py-2 text-sm font-black text-white disabled:opacity-40"
-              >
-                {withdrawingCelo && <Loader2 className="h-4 w-4 animate-spin" />}
-                Withdraw CELO
-              </button>
+              <WalletRequired>
+                <button
+                  type="button"
+                  onClick={() => void handleWithdrawCelo()}
+                  disabled={!hasCeloEarnings || withdrawingCelo}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1a4731] px-5 py-2 text-sm font-black text-white disabled:opacity-40"
+                >
+                  {withdrawingCelo && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Withdraw CELO
+                </button>
+              </WalletRequired>
             </div>
           </div>
 

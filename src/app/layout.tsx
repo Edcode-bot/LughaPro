@@ -17,7 +17,7 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: "LughaPro — Learn. Discover. Preserve.",
-  description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
+  description: "Africa's living cultural marketplace. Learn languages from native tutors, discover authentic music, arts, and literature, earn blockchain-verified certificates. Every purchase supports African creators directly on Celo.",
   icons: {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon.png' }],
     shortcut: '/favicon.svg',
@@ -32,13 +32,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "LughaPro — Learn. Discover. Preserve.",
-    description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
+    description: "Africa's living cultural marketplace. Learn languages from native tutors, discover authentic music, arts, and literature, earn blockchain-verified certificates. Every purchase supports African creators directly on Celo.",
     images: ['/og-image.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: "LughaPro — Learn. Discover. Preserve.",
-    description: "Learn. Discover. Preserve. — Where Africa's languages, arts, music, and wisdom are alive — and open to the world.",
+    description: "Africa's living cultural marketplace. Learn languages from native tutors, discover authentic music, arts, and literature, earn blockchain-verified certificates. Every purchase supports African creators directly on Celo.",
     images: ['/og-image.png'],
   },
 }
