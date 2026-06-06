@@ -24,8 +24,7 @@ export const metadata: Metadata = {
     apple: '/favicon.png',
   },
   verification: {
-    // TODO: Replace 'your-google-verification-code-here' with actual code from Search Console
-    google: 'your-google-verification-code-here',
+    google: 'tQNQmygBgfFAAOhsDT4XT9UQSmbwfLeuO5MvJyYVcrg',
   },
   other: {
     'talentapp:project_verification':

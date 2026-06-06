@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/dashboard', '/settings', '/wallet', '/library', '/publish', '/api/'],
+      disallow: ['/dashboard/', '/api/', '/settings/', '/wallet/', '/library/', '/earnings/', '/my-content/', '/students/', '/certificates/'],
     },
     sitemap: 'https://lugha-pro.vercel.app/sitemap.xml',
   }
