@@ -7,16 +7,45 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { id } = await params
   const supabase = await createServerSupabaseClient()
 
-  const { data: tutor, error } = await supabase
-    .from('tutors')
-    .select('*, profile:profiles(*), availability(*), reviews(*, student:profiles(*))')
+  // Query profiles first — all wallet-registered users have a profiles row,
+  // but not all have a tutors row.
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, full_name, wallet_address, bio, country, languages, avatar_url, role, created_at')
     .eq('id', id)
     .maybeSingle()
 
-  if (error) return jsonError('Unable to load tutor', 500)
-  if (!tutor) return jsonError('Tutor not found', 404)
+  if (profileError) return jsonError('Unable to load profile', 500)
+  if (!profile) return jsonError('Tutor not found', 404)
 
-  return jsonOk(tutor, 'Tutor loaded')
+  // Optionally enrich with tutors-table data (may not exist for all users)
+  const { data: tutorExtra } = await supabase
+    .from('tutors')
+    .select('rating, specialty, accepts_cusd, is_online, hourly_rate, availability(*), reviews(*, student:profiles(*))')
+    .eq('id', id)
+    .maybeSingle()
+
+  return jsonOk(
+    {
+      id: profile.id,
+      full_name: profile.full_name,
+      wallet_address: profile.wallet_address,
+      bio: profile.bio,
+      country: profile.country,
+      languages: profile.languages,
+      avatar_url: profile.avatar_url,
+      role: profile.role,
+      created_at: profile.created_at,
+      rating: tutorExtra?.rating ?? null,
+      specialty: tutorExtra?.specialty ?? null,
+      accepts_cusd: tutorExtra?.accepts_cusd ?? true,
+      is_online: tutorExtra?.is_online ?? false,
+      hourly_rate: tutorExtra?.hourly_rate ?? null,
+      availability: tutorExtra?.availability ?? [],
+      reviews: tutorExtra?.reviews ?? [],
+    },
+    'Tutor loaded',
+  )
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
