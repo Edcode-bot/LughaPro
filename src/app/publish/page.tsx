@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { ChangeEvent, FormEvent, Suspense, useEffect, useState } from 'react'
+import { ChangeEvent, FormEvent, Suspense, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
@@ -44,39 +43,10 @@ export default function PublishPage() {
   return (
     <Suspense fallback={<div className="grid min-h-screen place-items-center">Loading...</div>}>
       <AuthGuard>
-        <PublishGate />
+        <PublishClient />
       </AuthGuard>
     </Suspense>
   )
-}
-
-function PublishGate() {
-  const [role, setRole] = useState<string | null>(null)
-
-  useEffect(() => {
-    setRole(localStorage.getItem('lugha_role'))
-  }, [])
-
-  if (role === null) {
-    return <div className="grid min-h-screen place-items-center">Loading...</div>
-  }
-
-  if (role !== 'tutor') {
-    return (
-      <DashboardLayout role="student">
-        <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 text-center shadow-sm">
-          <p className="text-lg font-semibold text-forest">
-            This page is for creators only. Switch to a creator account to publish content.
-          </p>
-          <Link href="/dashboard" className="mt-6 inline-flex rounded-full bg-forest px-6 py-2.5 text-sm font-bold text-white">
-            Back to Dashboard
-          </Link>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  return <PublishClient />
 }
 
 const CONTENT_CATEGORIES = ['language', 'music', 'arts', 'literature', 'video', 'other'] as const

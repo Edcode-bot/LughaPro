@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { parseUnits, parseEther, keccak256, stringToHex, encodePacked, formatUnits } from 'viem'
-import { useWriteContract, useReadContract, useAccount, usePublicClient, useBalance } from 'wagmi'
+import { useWriteContract, useReadContract, useAccount, usePublicClient, useBalance, useChainId } from 'wagmi'
 import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_V2_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
 import { ContentType } from '@/types'
 
@@ -35,6 +35,7 @@ export function PurchaseFlow({
   onSuccess: (txHash?: string) => void
 }) {
   const { address } = useAccount()
+  const chainId = useChainId()
   const publicClient = usePublicClient()
   const [step, setStep] = useState<'idle' | 'approving' | 'purchasing' | 'done' | 'error'>('idle')
   const [txHash, setTxHash] = useState<string>('')
@@ -82,9 +83,17 @@ export function PurchaseFlow({
     if (!address) return
     setError('')
 
+    console.log('Starting payment:', { paymentMethod: payToken, priceUSD, creatorAddress })
+
     // Guard: creator wallet must be a valid non-zero address
     if (!creatorAddress || creatorAddress === '0x0000000000000000000000000000000000000000') {
       setError('Creator wallet address not found. Cannot process payment.')
+      setStep('error')
+      return
+    }
+
+    if (chainId !== 42220) {
+      setError('Please switch MetaMask to Celo Mainnet (Chain ID: 42220) before paying.')
       setStep('error')
       return
     }
@@ -100,17 +109,44 @@ export function PurchaseFlow({
       let hash: `0x${string}`
 
       if (payToken === 'celo') {
-        // Native CELO — send msg.value, no token approval needed
         setStep('purchasing')
-        const celoAmount = parseEther(priceUSD.toString())
-        hash = await writeContractAsync({
-          address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
-          abi: LUGHA_PAYMENT_V2_ABI,
-          functionName: 'purchaseWithCELO',
-          args: [purchaseId, creatorWalletAddress, contentIdBytes],
-          value: celoAmount,
-          chainId: 42220,
-        })
+        try {
+          const celoAmount = parseEther(String(priceUSD))
+          const creatorAddr = creatorAddress as `0x${string}`
+
+          console.log('Calling purchaseWithCELO:', {
+            contract: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
+            purchaseId,
+            creator: creatorAddr,
+            contentId: contentIdBytes,
+            value: celoAmount.toString(),
+          })
+
+          hash = await writeContractAsync({
+            address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
+            abi: LUGHA_PAYMENT_V2_ABI,
+            functionName: 'purchaseWithCELO',
+            args: [purchaseId, creatorAddr, contentIdBytes],
+            value: celoAmount,
+            chainId: 42220,
+          })
+
+          console.log('Transaction hash:', hash)
+        } catch (celoErr: unknown) {
+          console.error('CELO payment error:', celoErr)
+          const msg = celoErr instanceof Error ? celoErr.message : String(celoErr)
+          if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancel')) {
+            setError('You cancelled the transaction.')
+          } else if (msg.includes('insufficient') || msg.includes('funds')) {
+            setError('Not enough CELO. You need CELO for both the payment and gas fees.')
+          } else if (msg.includes('network') || msg.includes('chain')) {
+            setError('Wrong network. Please switch MetaMask to Celo Mainnet (Chain ID: 42220).')
+          } else {
+            setError(`Payment failed: ${msg.slice(0, 100)}`)
+          }
+          setStep('error')
+          return
+        }
       } else {
         // cUSD or USDT — approve then purchaseWithToken
         const paymentToken = payToken === 'usdt' ? CONTRACT_ADDRESSES.celo.USDT : CONTRACT_ADDRESSES.celo.cUSD

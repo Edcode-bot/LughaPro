@@ -100,7 +100,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
   return (
     <label className="grid gap-2 text-sm font-semibold text-forest">
       {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+      <input value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
     </label>
   )
 }
@@ -109,7 +109,7 @@ function TextArea({ label, value, onChange }: { label: string; value: string; on
   return (
     <label className="grid gap-2 text-sm font-semibold text-forest">
       {label}
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} className="min-h-28 rounded-xl border border-forest/15 px-4 py-3 font-normal" />
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} className="min-h-28 rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
     </label>
   )
 }

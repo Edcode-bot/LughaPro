@@ -96,14 +96,14 @@ function WalletClient() {
           <h1 className="font-serif text-4xl font-black text-forest">Wallet</h1>
           <p className="mt-2 text-foreground/65">Manage your Celo wallet and referral rewards.</p>
 
-          <section className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-foreground/55">Wallet address</p>
-            <p className="mt-2 break-all font-mono text-sm text-forest">{address}</p>
+          <section className="mt-8 rounded-2xl bg-[#171717] p-6 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Wallet address</p>
+            <p className="mt-2 break-all font-mono text-sm text-white/90">{address}</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => address && void navigator.clipboard.writeText(address)}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-forest px-4 py-2 text-sm font-bold text-forest"
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-bold text-white hover:bg-white/10"
               >
                 <Copy className="h-4 w-4" />
                 Copy
@@ -112,13 +112,13 @@ function WalletClient() {
                 href={address ? `https://celoscan.io/address/${address}` : '#'}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-sm font-bold text-white"
+                className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold text-white hover:bg-white/25"
               >
                 Celoscan
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
-            <span className="mt-4 inline-flex rounded-full bg-jade/15 px-3 py-1 text-xs font-bold text-jade">
+            <span className="mt-4 inline-flex rounded-full bg-[#FFBF00]/20 px-3 py-1 text-xs font-bold text-[#FFBF00]">
               Celo Mainnet
             </span>
           </section>
@@ -129,10 +129,18 @@ function WalletClient() {
 
           <section className="mt-6 flex flex-wrap gap-3">
             <a
+              href="https://app.ubeswap.org"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717] hover:bg-[#e6ac00]"
+            >
+              Add Funds
+            </a>
+            <a
               href="https://minipay.opera.com/"
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-gold px-6 py-3 font-bold text-foreground hover:bg-[#e6ac00]"
+              className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731] hover:bg-[#1a4731] hover:text-white"
             >
               Add Funds via MiniPay
             </a>
@@ -140,9 +148,9 @@ function WalletClient() {
               href={address ? `https://celoscan.io/address/${address}` : '#'}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full border-2 border-forest px-6 py-3 font-bold text-forest hover:bg-forest hover:text-white"
+              className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731] hover:bg-[#1a4731] hover:text-white"
             >
-              View Transaction History
+              View Transactions
             </a>
           </section>
 

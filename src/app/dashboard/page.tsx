@@ -23,7 +23,7 @@ function UnifiedDashboard() {
   const [myContent, setMyContent] = useState<TutorContentItem[]>([])
   const [recentPurchases, setRecentPurchases] = useState<PurchaseWithContent[]>([])
   const [recommended, setRecommended] = useState<ContentItem[]>([])
-  const [stats, setStats] = useState({ published: 0, accessed: 0, earned: 0, spent: 0 })
+  const [stats, setStats] = useState({ published: 0, accessed: 0, cusdEarned: 0, celoEarned: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,8 +43,8 @@ function UnifiedDashboard() {
         setStats({
           published: items.length,
           accessed: statsRes.data?.content_accessed ?? (recentRes.data?.items ?? []).length,
-          earned: earningsRes.data?.total_earned ?? 0,
-          spent: statsRes.data?.cusd_spent ?? 0,
+          cusdEarned: earningsRes.data?.total_earned ?? 0,
+          celoEarned: statsRes.data?.celo_earned ?? 0,
         })
       })
       .finally(() => setLoading(false))
@@ -53,8 +53,8 @@ function UnifiedDashboard() {
   const statCards = [
     { label: 'Content Published', value: stats.published },
     { label: 'Content Accessed', value: stats.accessed },
-    { label: 'cUSD Earned', value: stats.earned },
-    { label: 'cUSD Spent', value: stats.spent },
+    { label: 'cUSD Earned', value: stats.cusdEarned },
+    { label: 'CELO Earned', value: stats.celoEarned },
   ]
 
   return (
@@ -141,10 +141,9 @@ function UnifiedDashboard() {
           )}
 
           <section className="mt-10 flex flex-wrap gap-3">
-            <Link href="/publish" className="rounded-full bg-gold px-6 py-3 font-bold text-foreground">Publish Content</Link>
-            <Link href="/learn" className="rounded-full border-2 border-forest px-6 py-3 font-bold text-forest">Browse Content</Link>
-            <Link href="/library" className="rounded-full border-2 border-forest px-6 py-3 font-bold text-forest">My Library</Link>
-            <Link href="/wallet" className="rounded-full border-2 border-forest px-6 py-3 font-bold text-forest">Wallet</Link>
+            <Link href="/publish" className="rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">Publish Content</Link>
+            <Link href="/learn" className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731]">Explore</Link>
+            <Link href="/wallet" className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731]">My Wallet</Link>
           </section>
         </FadeIn>
       </ErrorBoundary>
