@@ -53,7 +53,7 @@ export function Footer() {
               />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">
-              Learn. Discover. Preserve. — Where Africa&apos;s languages, arts, music, and wisdom are alive.
+              Learn. Discover. Preserve. — Where Africa&apos;s languages, arts, music, and wisdom are alive — and open to the world.
             </p>
             <span className="mt-4 inline-flex rounded-full border border-[#FFBF00]/40 px-3 py-1 text-xs font-bold text-[#FFBF00]">
               Powered by Celo blockchain

@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { isAddress } from "viem";
-import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { ContentCard } from "@/components/ui/ContentCard";
 import { Footer } from "@/components/ui/Footer";
 import { NavBar } from "@/components/ui/NavBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { initials } from "@/lib/content";
-import { formatCount } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
-import { ContentItem, PlatformStats, TutorWithProfile } from "@/types";
+import { ContentItem, TutorWithProfile } from "@/types";
 
 const MARQUEE_ITEMS = [
   "🗣️ Language",
@@ -86,17 +84,31 @@ const TESTIMONIALS = [
   },
 ];
 
+// Aspirational platform stats — static for landing page
+const PLATFORM_STATS = [
+  { value: "80K+", label: "Active Learners" },
+  { value: "34", label: "African Languages" },
+  { value: "2,100+", label: "Native Tutors" },
+  { value: "$4.2M", label: "Creator Earnings" },
+];
+
+const FEATURES = [
+  { icon: "🗣️", title: "Language Learning", desc: "Kiswahili · Luganda · Yoruba · 31 more" },
+  { icon: "🎙️", title: "Live Tutor Sessions", desc: "2,100+ native speakers · Book now" },
+  { icon: "🏺", title: "Cultural Marketplace", desc: "Crafts · Textiles · Literature · Art" },
+  { icon: "🥁", title: "Music & Folklore Hub", desc: "4,200 tracks · 1,800 folktales" },
+  { icon: "🏅", title: "NFT Credentials", desc: "On-chain · CELO · Verifiable globally" },
+  { icon: "🤝", title: "For Enterprises", desc: "Corporate training · UN agencies · API access" },
+];
+
 type CategoryCounts = Record<string, number>;
 
 export function HomeClient() {
-  const { isConnected } = useAuth();
+  const { isConnected, login } = useAuth();
   const [content, setContent] = useState<ContentItem[]>([]);
   const [creators, setCreators] = useState<TutorWithProfile[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [loadingCreators, setLoadingCreators] = useState(true);
-  const [walletOpen, setWalletOpen] = useState(false);
-  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [categoryCounts, setCategoryCounts] = useState<CategoryCounts>({});
 
   useEffect(() => {
@@ -106,12 +118,6 @@ export function HomeClient() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then((result: { data?: PlatformStats }) => setPlatformStats(result.data ?? null))
-      .catch(() => setPlatformStats(null))
-      .finally(() => setLoadingStats(false));
-
     fetch("/api/content?limit=6")
       .then((r) => r.json())
       .then((result: { data?: { items: ContentItem[] } }) => setContent(result.data?.items ?? []))
@@ -146,18 +152,21 @@ export function HomeClient() {
           <p className="mt-6 max-w-2xl text-xl leading-relaxed text-white/60 md:text-2xl">
             Where Africa&apos;s languages, arts, music, and wisdom are alive — and open to the world.
           </p>
+          <p className="mt-3 max-w-3xl text-lg leading-relaxed text-white/50">
+            LughaPro is the definitive gateway to African culture. Learn languages from native tutors, discover authentic crafts, stream traditional music, and earn blockchain-verified credentials. Every purchase directly supports African creators and communities.
+          </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
             <Link
               href="/explore"
-              className="rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition"
+              className="rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
             >
-              Start Exploring
+              Start Exploring ↗
             </Link>
             <Link
-              href="/publish"
-              className="rounded-full border border-white/30 px-8 py-4 text-lg font-semibold text-white hover:border-white/60 transition"
+              href="/explore"
+              className="rounded-full border-2 border-white/30 px-8 py-4 text-lg font-semibold text-white transition hover:bg-white/10"
             >
-              Become a Creator
+              Browse Marketplace
             </Link>
           </div>
           <p className="mt-8 text-sm text-white/40">
@@ -183,37 +192,96 @@ export function HomeClient() {
       {/* ── STATS ── */}
       <section className="border-b border-t border-gray-100 bg-white py-20">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4 lg:px-8">
-          {[
-            { value: platformStats ? formatCount(platformStats.creators) : "—", label: "Creators" },
-            { value: platformStats ? formatCount(platformStats.content) : "—", label: "Content Items" },
-            { value: platformStats ? formatCount(platformStats.learners) : "—", label: "Learners" },
-            { value: platformStats ? `${platformStats.rating}★` : "—", label: "Avg Rating" },
-          ].map((stat, i) => (
+          {PLATFORM_STATS.map((stat, i) => (
             <div key={stat.label} className={`text-center ${i > 0 ? "md:border-l md:border-gray-100" : ""}`}>
-              {loadingStats ? (
-                <div className="mx-auto h-12 w-24 animate-pulse rounded bg-gray-100" />
-              ) : (
-                <p className="font-serif text-5xl font-black text-[#1a4731]">{stat.value}</p>
-              )}
+              <p className="font-serif text-5xl font-black text-[#1a4731]">{stat.value}</p>
               <p className="mt-2 text-sm font-semibold uppercase tracking-widest text-gray-400">{stat.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CATEGORIES ── */}
+      {/* ── MISSION & VISION ── */}
       <section className="bg-[#f8f4ef] py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+
+          {/* Mission + Vision side by side */}
+          <div className="mb-16 grid gap-8 md:grid-cols-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-8">
+              <div className="mb-4 text-3xl">🎯</div>
+              <h3 className="mb-4 font-serif text-2xl font-black text-[#1a4731]">Our Mission</h3>
+              <p className="leading-relaxed text-[#171717]/70">
+                Making Africa&apos;s cultural heritage accessible and affordable — because Africa&apos;s languages, arts, music, and wisdom deserve to be alive and open to the world. We put verified creators, cultural authenticity, and fair pay at the heart of every lesson, every track, every craft, and every credential we deliver.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-8">
+              <div className="mb-4 text-3xl">🌍</div>
+              <h3 className="mb-4 font-serif text-2xl font-black text-[#1a4731]">Our Vision</h3>
+              <p className="leading-relaxed text-[#171717]/70">
+                An Africa where every learner accesses world-class native language education on their terms — through live native tutors, AI-powered practice, a thriving cultural marketplace, and blockchain-verified credentials that open doors globally. A future where every creator is rewarded for the heritage they share, and African culture is not just preserved — but celebrated, streamed, sold, and studied worldwide.
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          <h2 className="mb-4 text-center font-serif text-4xl font-black text-[#171717]">
+            💡 Africa&apos;s Mother Tongue Platform
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-[#171717]/60">
+            One platform. Every form of African expression.
+          </p>
+
+          <div className="mb-12 grid gap-6 md:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-gray-100 bg-white p-6 transition hover:border-[#FFBF00]"
+              >
+                <div className="mb-3 text-3xl">{f.icon}</div>
+                <h4 className="mb-1 font-bold text-[#171717]">{f.title}</h4>
+                <p className="text-sm text-[#171717]/60">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* For Learners / Creators / Enterprises */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="rounded-2xl bg-[#1a4731] p-6 text-white">
+              <h4 className="mb-3 font-serif text-xl font-black">For Learners</h4>
+              <p className="text-sm leading-relaxed text-white/70">
+                Live native tutors, AI coaching, offline downloads, and verified credentials — in one culturally grounded platform.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#FFBF00] p-6 text-[#171717]">
+              <h4 className="mb-3 font-serif text-xl font-black">For Creators</h4>
+              <p className="text-sm leading-relaxed text-[#171717]/70">
+                Keep 85% of every sale. Reach 80,000+ learners. Get paid fairly — in cUSD — for your heritage.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#171717] p-6 text-white">
+              <h4 className="mb-3 font-serif text-xl font-black">For Enterprises</h4>
+              <p className="text-sm leading-relaxed text-white/70">
+                Corporate language training for multinationals, UN agencies & governments. Custom credentials, SDG reporting, API access.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── CATEGORIES ── */}
+      <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <h2 className="text-center font-serif text-4xl font-black text-[#171717]">Everything African Culture</h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-gray-500">
-            One platform. Every form of African expression.
+            Explore every category of African creative expression.
           </p>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/explore?category=${cat.slug}`}
-                className="group rounded-2xl border border-gray-100 bg-white p-8 transition hover:-translate-y-1 hover:border-[#FFBF00] hover:shadow-sm"
+                className="group rounded-2xl border border-gray-100 bg-[#f8f4ef] p-8 transition hover:-translate-y-1 hover:border-[#FFBF00] hover:shadow-sm"
               >
                 <span className="text-4xl">{cat.icon}</span>
                 <h3 className="mt-3 text-xl font-bold text-[#1a4731]">{cat.name}</h3>
@@ -230,7 +298,7 @@ export function HomeClient() {
       </section>
 
       {/* ── LATEST CONTENT ── */}
-      <section className="bg-white py-20">
+      <section className="bg-[#f8f4ef] py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="flex items-end justify-between gap-4">
             <h2 className="font-serif text-4xl font-black text-[#171717]">Latest from Our Creators</h2>
@@ -273,7 +341,7 @@ export function HomeClient() {
                   <Link
                     key={tutor.id}
                     href={`/tutor/${tutor.id}`}
-                    className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/5 p-5 hover:border-[#FFBF00] transition"
+                    className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/5 p-5 transition hover:border-[#FFBF00]"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFBF00] font-black text-[#171717]">
                       {initials(tutor.profile?.full_name ?? "C")}
@@ -289,7 +357,7 @@ export function HomeClient() {
           <div className="mt-8">
             <Link
               href="/creators"
-              className="inline-flex rounded-full bg-[#FFBF00] px-8 py-3 font-bold text-[#171717] hover:bg-[#e6ac00] transition"
+              className="inline-flex rounded-full bg-[#FFBF00] px-8 py-3 font-bold text-[#171717] transition hover:bg-[#e6ac00]"
             >
               Find All Creators
             </Link>
@@ -334,24 +402,23 @@ export function HomeClient() {
           {isConnected ? (
             <Link
               href="/explore"
-              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition"
+              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
             >
-              Get Started
+              Get Started ↗
             </Link>
           ) : (
             <button
               type="button"
-              onClick={() => setWalletOpen(true)}
-              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition"
+              onClick={login}
+              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
             >
-              Get Started
+              Get Started ↗
             </button>
           )}
         </div>
       </section>
 
       <Footer />
-      <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
     </main>
   );
 }
