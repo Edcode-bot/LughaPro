@@ -2,36 +2,25 @@
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { FormEvent, useEffect, useState, ChangeEvent } from 'react'
+import { FormEvent, useEffect, useRef, useState, ChangeEvent } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
 import { useAuth } from '@/hooks/useAuth'
-import { readLughaRole, saveStoredProfile } from '@/lib/profile-storage'
-import { uploadToSupabaseStorage } from '@/lib/upload'
+import { initials } from '@/lib/content'
+import { saveStoredProfile } from '@/lib/profile-storage'
 import { useToast } from '@/components/ui/Toast'
 
-const countries = [
-  'Kenya',
-  'Tanzania',
-  'Uganda',
-  'Rwanda',
-  'Ethiopia',
-  'Nigeria',
-  'Ghana',
-  'South Africa',
-  'Other',
+const AFRICAN_COUNTRIES = [
+  'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi',
+  'Cameroon', 'Cape Verde', 'Central African Republic', 'Chad', 'Comoros',
+  'Congo', 'DR Congo', 'Djibouti', 'Egypt', 'Equatorial Guinea', 'Eritrea',
+  'Eswatini', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea',
+  'Guinea-Bissau', 'Ivory Coast', 'Kenya', 'Lesotho', 'Liberia', 'Libya',
+  'Madagascar', 'Malawi', 'Mali', 'Mauritania', 'Mauritius', 'Morocco',
+  'Mozambique', 'Namibia', 'Niger', 'Nigeria', 'Rwanda', 'São Tomé',
+  'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia', 'South Africa',
+  'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia', 'Uganda',
+  'Zambia', 'Zimbabwe', 'Other',
 ]
-
-const specialtyOptions = [
-  'Conversational',
-  'Business',
-  'Academic',
-  'Beginners',
-  'Cultural',
-  'Tourism',
-  'Dialect',
-]
-
-const languageOptions = ['Kiswahili', 'English', 'French', 'Arabic', 'Luganda']
 
 export default function OnboardingPage() {
   return (
@@ -43,40 +32,52 @@ export default function OnboardingPage() {
 
 function OnboardingForm() {
   const router = useRouter()
-  const { address, role: authRole, profile, setProfile, isLoading } = useAuth()
-  const role = readLughaRole() ?? authRole
+  const { address, profile, setProfile, isLoading, displayName } = useAuth()
   const { toast } = useToast()
+  const fileRef = useRef<HTMLInputElement>(null)
 
+  // Redirect if already onboarded
   useEffect(() => {
     if (!isLoading && profile?.onboarding_completed) {
       router.replace('/dashboard')
     }
   }, [isLoading, profile?.onboarding_completed, router])
+
   const [fullName, setFullName] = useState(profile?.full_name ?? '')
   const [country, setCountry] = useState(profile?.country ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? '')
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url ?? '')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [specialties, setSpecialties] = useState<string[]>([])
-  const [languages, setLanguages] = useState<string[]>(profile?.languages ?? ['Kiswahili'])
+  const [selectedRole, setSelectedRole] = useState<'student' | 'tutor'>('student')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !address) return
+    // Show immediate preview
+    setAvatarPreview(URL.createObjectURL(file))
     setUploadingAvatar(true)
-    setError(null)
     try {
-      const reader = new FileReader()
-      reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
-      reader.readAsDataURL(file)
-      const publicUrl = await uploadToSupabaseStorage(file, 'covers')
-      setAvatarUrl(publicUrl)
-      setAvatarPreview(publicUrl)
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Avatar upload failed')
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        headers: { 'x-wallet-address': address },
+        body: formData,
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) {
+        setAvatarUrl(data.url)
+        setAvatarPreview(data.url)
+      } else {
+        console.error('Upload failed:', data.error)
+        setAvatarPreview('')
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+      setAvatarPreview('')
     } finally {
       setUploadingAvatar(false)
     }
@@ -91,10 +92,6 @@ function OnboardingForm() {
     }
     if (!country) {
       setError('Please select your country.')
-      return
-    }
-    if (role === 'tutor' && languages.length === 0) {
-      setError('Select at least one language you teach.')
       return
     }
 
@@ -112,8 +109,7 @@ function OnboardingForm() {
         country,
         bio: bio.slice(0, 200),
         avatar_url: avatarUrl || null,
-        languages,
-        specialty: role === 'tutor' ? specialties : undefined,
+        role: selectedRole,
         onboarding_completed: true,
       }),
     })
@@ -135,143 +131,148 @@ function OnboardingForm() {
     router.push('/dashboard')
   }
 
-  function toggleSpecialty(value: string) {
-    setSpecialties((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
-    )
-  }
-
-  function toggleLanguage(value: string) {
-    setLanguages((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
-    )
-  }
-
   return (
-    <main className="grid min-h-screen place-items-center bg-off-white px-5 py-10">
-      <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-sm">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-cream">
-          <div className="h-full w-full rounded-full bg-forest" />
-        </div>
-        <p className="mt-3 text-center text-xs font-bold uppercase tracking-wide text-foreground/55">
-          Step 1 of 1
-        </p>
-        <Image src="/logo.png" alt="LughaPro" width={120} height={40} className="mx-auto mt-4 h-9 w-auto" />
-        <h1 className="mt-6 text-center font-serif text-3xl font-black text-forest">Complete your profile</h1>
-        <p className="mt-2 text-center text-sm text-foreground/65">Required before you can use LughaPro.</p>
+    <main className="min-h-screen bg-[#f8f4ef] px-4 py-12">
+      <div className="mx-auto w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm">
 
-        <form onSubmit={(event) => void submit(event)} className="mt-8 grid gap-4">
-          <Field label="Display Name *" value={fullName} onChange={setFullName} />
-          <label className="grid gap-2 text-sm font-semibold text-forest">
+        {/* Logo */}
+        <div className="flex justify-center">
+          <Image src="/logo.png" alt="LughaPro" width={48} height={48} className="h-12 w-12 rounded-xl object-contain" />
+        </div>
+
+        <h1 className="mt-6 text-center font-serif text-3xl font-black text-[#171717]">
+          Welcome to LughaPro
+        </h1>
+        <p className="mt-2 text-center text-gray-500">
+          Tell us a bit about yourself to get started.
+        </p>
+
+        {/* Avatar */}
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="relative"
+            aria-label="Upload photo"
+          >
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarPreview}
+                alt="Avatar"
+                className="h-24 w-24 rounded-full object-cover ring-4 ring-[#FFBF00]"
+              />
+            ) : (
+              <div className="grid h-24 w-24 place-items-center rounded-full bg-[#FFBF00] ring-4 ring-[#FFBF00]/30">
+                <span className="text-3xl font-black text-[#171717]">
+                  {initials(fullName || displayName)}
+                </span>
+              </div>
+            )}
+            {uploadingAvatar && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              </div>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="text-sm font-semibold text-[#1a4731] underline underline-offset-2"
+          >
+            {avatarPreview ? 'Change photo' : 'Add photo'}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void handleAvatarChange(e)}
+          />
+        </div>
+
+        <form onSubmit={(e) => void submit(e)} className="mt-6 space-y-4">
+          {/* Display Name */}
+          <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
+            Display Name *
+            <input
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Grace Mwangi"
+              className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none"
+            />
+          </label>
+
+          {/* Country */}
+          <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
             Country *
             <select
-              value={country}
-              onChange={(event) => setCountry(event.target.value)}
-              className="rounded-xl border border-forest/15 px-4 py-3 font-normal"
               required
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none"
             >
-              <option value="">Select country</option>
-              {countries.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
+              <option value="">Select your country</option>
+              {AFRICAN_COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-forest">
-            Bio (optional)
+
+          {/* Bio */}
+          <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
+            Bio
             <textarea
               value={bio}
               maxLength={200}
-              onChange={(event) => setBio(event.target.value)}
-              className="min-h-24 rounded-xl border border-forest/15 px-4 py-3 font-normal"
+              rows={3}
+              onChange={(e) => setBio(e.target.value)}
               placeholder="Tell learners about yourself..."
+              className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none"
             />
-            <span className="text-xs font-normal text-foreground/50">{bio.length}/200</span>
+            <span className="text-right text-xs font-normal text-gray-400">{bio.length}/200</span>
           </label>
 
-          {role === 'tutor' ? (
-            <>
-              <div>
-                <p className="text-sm font-semibold text-forest">Specialty tags</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {specialtyOptions.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleSpecialty(item)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-                        specialties.includes(item) ? 'bg-gold text-foreground' : 'bg-off-white text-forest'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-forest">Languages taught *</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {languageOptions.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleLanguage(item)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-                        languages.includes(item) ? 'bg-forest text-white' : 'bg-off-white text-forest'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : null}
+          {/* Role selector */}
+          <div>
+            <p className="text-sm font-semibold text-[#1a4731]">I want to…</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {([
+                { value: 'student', emoji: '📚', title: 'Learn', sub: 'Access content & get certified' },
+                { value: 'tutor',   emoji: '🎙️', title: 'Teach & Create', sub: 'Publish content & earn rewards' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSelectedRole(opt.value)}
+                  className={`rounded-xl border-2 p-4 text-left transition ${
+                    selectedRole === opt.value
+                      ? 'border-[#FFBF00] bg-[#fdf6e3]'
+                      : 'border-gray-100 bg-white hover:border-[#FFBF00]/50'
+                  }`}
+                >
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <p className="mt-2 font-bold text-[#1a4731]">{opt.title}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">{opt.sub}</p>
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <label className="grid gap-2 text-sm font-semibold text-forest">
-            Profile photo (optional)
-            <input type="file" accept="image/*" onChange={(e) => void handleAvatarUpload(e)} />
-          </label>
-          {avatarPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarPreview} alt="Preview" className="mx-auto h-20 w-20 rounded-full object-cover" />
-          ) : null}
-          {uploadingAvatar ? <p className="text-xs text-foreground/55">Uploading photo...</p> : null}
-
-          {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+          )}
 
           <button
             type="submit"
-            disabled={submitting}
-            className="mt-2 h-12 rounded-full bg-gold font-bold text-foreground hover:bg-[#e6ac00] disabled:opacity-50"
+            disabled={submitting || uploadingAvatar}
+            className="mt-2 h-12 w-full rounded-full bg-[#FFBF00] font-black text-[#171717] transition hover:bg-[#e6ac00] disabled:opacity-50"
           >
-            {submitting ? 'Saving...' : 'Complete Profile'}
+            {submitting ? 'Saving…' : 'Complete Profile →'}
           </button>
         </form>
       </div>
     </main>
-  )
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="grid gap-2 text-sm font-semibold text-forest">
-      {label}
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="rounded-xl border border-forest/15 px-4 py-3 font-normal"
-        required={label.includes('*')}
-      />
-    </label>
   )
 }
