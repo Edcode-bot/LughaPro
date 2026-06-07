@@ -1,16 +1,13 @@
 "use client";
 
-import { Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { useAuth } from "@/hooks/useAuth";
 import { formatCELOAmount, formatCUSDAmount, getCELOBalance, getCUSDBalance, shortenAddress } from "@/lib/minipay";
 
 export function WalletWidget() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useAuth();
   const [cusd, setCusd] = useState<string | null>(null);
   const [celo, setCelo] = useState<string | null>(null);
-  const [walletOpen, setWalletOpen] = useState(false);
   const [failed, setFailed] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -18,8 +15,8 @@ export function WalletWidget() {
     setFailed(false);
     try {
       const [cusdBalance, celoBalance] = await Promise.all([
-        getCUSDBalance(address),
-        getCELOBalance(address),
+        getCUSDBalance(address as `0x${string}`),
+        getCELOBalance(address as `0x${string}`),
       ]);
       setCusd(formatCUSDAmount(cusdBalance));
       setCelo(formatCELOAmount(celoBalance));
@@ -36,20 +33,11 @@ export function WalletWidget() {
     return () => window.clearInterval(interval);
   }, [refresh]);
 
-  if (!isConnected || !address) {
+  // If no address at all, show a minimal placeholder — Privy login handles connection
+  if (!address) {
     return (
       <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
-        <Wallet className="mx-auto h-10 w-10 text-gold" />
-        <h3 className="mt-4 font-serif text-2xl font-black text-forest">Connect your wallet</h3>
-        <p className="mt-2 text-foreground/65">Connect your wallet to view balances and pay with crypto.</p>
-        <button
-          type="button"
-          onClick={() => setWalletOpen(true)}
-          className="mt-6 rounded-full bg-gold px-6 py-3 font-bold text-foreground hover:bg-[#e6ac00]"
-        >
-          Connect Wallet
-        </button>
-        <ConnectWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
+        <p className="text-foreground/60 text-sm">Connect your account to view balances.</p>
       </div>
     );
   }

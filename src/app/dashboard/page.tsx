@@ -110,7 +110,7 @@ function UnifiedDashboard() {
             ) : recentPurchases.length === 0 ? (
               <div className="mt-6 rounded-xl bg-cream p-8 text-center">
                 <p className="text-foreground/65">No purchased content yet.</p>
-                <Link href="/learn" className="mt-4 inline-flex rounded-full bg-forest px-6 py-2.5 text-sm font-bold text-white">
+                <Link href="/explore" className="mt-4 inline-flex rounded-full bg-forest px-6 py-2.5 text-sm font-bold text-white">
                   Browse content
                 </Link>
               </div>
@@ -130,7 +130,7 @@ function UnifiedDashboard() {
             <section className="mt-10">
               <div className="flex items-center justify-between">
                 <h2 className="font-serif text-2xl font-black text-forest">Recommended for You</h2>
-                <Link href="/learn" className="text-sm font-bold text-jade">See all</Link>
+                <Link href="/explore" className="text-sm font-bold text-jade">See all</Link>
               </div>
               <div className="mt-4 grid gap-6 md:grid-cols-3">
                 {recommended.map((item) => (
@@ -142,7 +142,7 @@ function UnifiedDashboard() {
 
           <section className="mt-10 flex flex-wrap gap-3">
             <Link href="/publish" className="rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">Publish Content</Link>
-            <Link href="/learn" className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731]">Explore</Link>
+            <Link href="/explore" className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731]">Explore</Link>
             <Link href="/wallet" className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731]">My Wallet</Link>
           </section>
         </FadeIn>

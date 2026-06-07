@@ -10,8 +10,6 @@ import { contentTypeLabel } from '@/lib/content'
 import { usePurchases } from '@/hooks/usePurchases'
 import { LibraryProgressStatus } from '@/types'
 
-type LibraryTab = 'all' | 'book' | 'post' | 'video' | 'music'
-
 export default function LibraryPage() {
   return (
     <AuthGuard>
@@ -26,26 +24,82 @@ function actionLabel(type: string) {
   return 'Read Now'
 }
 
+function Pills<T extends string>({
+  options,
+  active,
+  onChange,
+}: {
+  options: { key: T; label: string }[]
+  active: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => onChange(o.key)}
+          className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-bold transition ${
+            active === o.key
+              ? 'border-[#FFBF00] bg-[#FFBF00] text-[#171717]'
+              : 'border-gray-200 bg-white text-[#1a4731]'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+type CategoryFilter = 'all' | 'language' | 'music' | 'arts' | 'literature' | 'video' | 'experience'
+type TypeFilter = 'all' | 'book' | 'post' | 'video' | 'music'
+type PriceFilter = 'all' | 'free' | 'paid'
+
+const CATEGORY_OPTIONS: { key: CategoryFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'language', label: 'Language' },
+  { key: 'music', label: 'Music' },
+  { key: 'arts', label: 'Arts & Crafts' },
+  { key: 'literature', label: 'Literature' },
+  { key: 'video', label: 'Video' },
+  { key: 'experience', label: 'Experiences' },
+]
+
+const TYPE_OPTIONS: { key: TypeFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'book', label: 'Books' },
+  { key: 'post', label: 'Posts' },
+  { key: 'video', label: 'Videos' },
+  { key: 'music', label: 'Music' },
+]
+
+const PRICE_OPTIONS: { key: PriceFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'free', label: 'Free' },
+  { key: 'paid', label: 'Paid' },
+]
+
 function LibraryClient() {
   const { purchases, loading, updateProgress } = usePurchases()
-  const [tab, setTab] = useState<LibraryTab>('all')
+  const [category, setCategory] = useState<CategoryFilter>('all')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>('all')
 
   const visible = useMemo(() => {
-    if (tab === 'all') return purchases
-    return purchases.filter((p) => p.content.type === tab)
-  }, [purchases, tab])
+    return purchases.filter((p) => {
+      if (category !== 'all' && (p.content as { category?: string }).category !== category) return false
+      if (typeFilter !== 'all' && p.content.type !== typeFilter) return false
+      if (priceFilter === 'free' && Number(p.amount ?? 0) > 0) return false
+      if (priceFilter === 'paid' && Number(p.amount ?? 0) === 0) return false
+      return true
+    })
+  }, [purchases, category, typeFilter, priceFilter])
 
   async function markComplete(purchaseId: string) {
     await updateProgress(purchaseId, 'completed', 100)
   }
-
-  const tabs: { key: LibraryTab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'book', label: 'Books' },
-    { key: 'post', label: 'Posts' },
-    { key: 'video', label: 'Videos' },
-    { key: 'music', label: 'Music' },
-  ]
 
   return (
     <DashboardLayout role="student">
@@ -53,19 +107,10 @@ function LibraryClient() {
         <FadeIn>
           <h1 className="font-serif text-4xl font-black text-[#1a4731]">My Library</h1>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                  tab === t.key ? 'bg-[#FFBF00] text-[#171717]' : 'bg-white text-[#1a4731]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="mt-6 space-y-3">
+            <Pills options={CATEGORY_OPTIONS} active={category} onChange={setCategory} />
+            <Pills options={TYPE_OPTIONS} active={typeFilter} onChange={setTypeFilter} />
+            <Pills options={PRICE_OPTIONS} active={priceFilter} onChange={setPriceFilter} />
           </div>
 
           {loading ? (
@@ -74,13 +119,20 @@ function LibraryClient() {
             <div className="mt-8 rounded-2xl bg-white p-12 text-center shadow-sm">
               <p className="text-5xl">📚</p>
               <h2 className="mt-4 font-serif text-2xl font-black text-[#1a4731]">Your library is empty.</h2>
-              <Link href="/learn" className="mt-6 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">
+              <Link href="/explore" className="mt-6 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">
                 Explore Content
               </Link>
             </div>
           ) : visible.length === 0 ? (
             <div className="mt-8 rounded-2xl bg-white p-8 text-center shadow-sm">
-              <p className="text-foreground/60">No {tab} content in your library.</p>
+              <p className="text-foreground/60">No items match your filters.</p>
+              <button
+                type="button"
+                onClick={() => { setCategory('all'); setTypeFilter('all'); setPriceFilter('all') }}
+                className="mt-3 rounded-full border border-[#1a4731] px-5 py-2 text-sm font-bold text-[#1a4731]"
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
             <div className="mt-8 grid gap-4">
@@ -104,7 +156,7 @@ function LibraryClient() {
                       </div>
                       <div className="flex shrink-0 flex-col gap-2">
                         <a
-                          href={purchase.content.file_url ?? '/learn'}
+                          href={purchase.content.file_url ?? '/explore'}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex h-10 items-center justify-center rounded-full bg-[#FFBF00] px-5 text-sm font-bold text-[#171717]"
@@ -117,7 +169,7 @@ function LibraryClient() {
                             onClick={() => void markComplete(purchase.id)}
                             className="inline-flex h-10 items-center justify-center rounded-full border-2 border-[#1a4731] px-5 text-sm font-bold text-[#1a4731]"
                           >
-                            Mark as Complete
+                            Mark Complete
                           </button>
                         ) : null}
                       </div>
