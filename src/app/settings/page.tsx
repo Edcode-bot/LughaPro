@@ -7,7 +7,6 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
 import { useAuth } from '@/hooks/useAuth'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { saveStoredProfile } from '@/lib/profile-storage'
 import { useToast } from '@/components/ui/Toast'
 import { initials } from '@/lib/content'
@@ -20,17 +19,6 @@ export default function SettingsPage() {
   )
 }
 
-async function uploadAvatar(file: File): Promise<string> {
-  const supabase = createBrowserSupabaseClient()
-  const ext = file.name.split('.').pop() ?? 'jpg'
-  const fileName = `avatar-${Date.now()}.${ext}`
-  const { data, error } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, file, { cacheControl: '3600', upsert: true })
-  if (error) throw new Error(error.message)
-  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(data.path)
-  return urlData.publicUrl
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -87,14 +75,25 @@ function SettingsClient() {
     setAvatarPreview(URL.createObjectURL(file))
     setUploadingAvatar(true)
     try {
-      const url = await uploadAvatar(file)
-      setAvatarUrl(url)
-      // save immediately
-      await fetch('/api/profiles/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
-        body: JSON.stringify({ avatar_url: url }),
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        headers: { 'x-wallet-address': address },
+        body: formData,
       })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
+      setAvatarUrl(data.url)
+      // Sync localStorage profile
+      try {
+        const stored = localStorage.getItem('lugha_profile')
+        if (stored) {
+          const parsed = JSON.parse(stored) as Record<string, unknown>
+          parsed.avatar_url = data.url
+          localStorage.setItem('lugha_profile', JSON.stringify(parsed))
+        }
+      } catch { /* ignore */ }
       toast({ title: 'Avatar updated', type: 'success' })
     } catch (err) {
       toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Error', type: 'error' })
