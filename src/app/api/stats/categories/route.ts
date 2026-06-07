@@ -14,37 +14,39 @@ export async function GET() {
       experience: 0,
     }
 
-    // Books — use content_category column if available, otherwise count all as 'language'
+    // Run all queries in parallel — use Promise.allSettled so one failure doesn't break the rest
     const [booksRes, postsRes, videosRes, musicRes] = await Promise.allSettled([
-      supabase.from('books').select('content_category').eq('published', true),
-      supabase.from('posts').select('content_category').eq('published', true),
+      // Books have no category column — count all published books as 'literature'
+      supabase.from('books').select('id', { count: 'exact', head: true }).eq('published', true),
+      // Posts have no category column — count all published posts as 'language'
+      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('published', true),
+      // Videos DO have a category column
       supabase.from('videos').select('category').eq('published', true),
-      supabase.from('music').select('id').eq('published', true),
+      // Music has no category — count all as 'music'
+      supabase.from('music').select('id', { count: 'exact', head: true }).eq('published', true),
     ])
 
-    if (booksRes.status === 'fulfilled' && booksRes.value.data) {
-      for (const row of booksRes.value.data) {
-        const cat = (row.content_category as string) ?? 'language'
-        counts[cat] = (counts[cat] ?? 0) + 1
-      }
+    if (booksRes.status === 'fulfilled' && booksRes.value.count != null) {
+      counts.literature += booksRes.value.count
     }
 
-    if (postsRes.status === 'fulfilled' && postsRes.value.data) {
-      for (const row of postsRes.value.data) {
-        const cat = (row.content_category as string) ?? 'language'
-        counts[cat] = (counts[cat] ?? 0) + 1
-      }
+    if (postsRes.status === 'fulfilled' && postsRes.value.count != null) {
+      counts.language += postsRes.value.count
     }
 
     if (videosRes.status === 'fulfilled' && videosRes.value.data) {
       for (const row of videosRes.value.data) {
-        const cat = (row.category as string) ?? 'video'
-        counts[cat] = (counts[cat] ?? 0) + 1
+        const cat = (row.category as string | null) ?? 'video'
+        if (cat in counts) {
+          counts[cat] += 1
+        } else {
+          counts.video += 1
+        }
       }
     }
 
-    if (musicRes.status === 'fulfilled' && musicRes.value.data) {
-      counts.music = (counts.music ?? 0) + musicRes.value.data.length
+    if (musicRes.status === 'fulfilled' && musicRes.value.count != null) {
+      counts.music += musicRes.value.count
     }
 
     return NextResponse.json({ data: counts, error: null })

@@ -9,20 +9,7 @@ import { NavBar } from "@/components/ui/NavBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { initials } from "@/lib/content";
 import { useAuth } from "@/hooks/useAuth";
-import { ContentItem, TutorWithProfile } from "@/types";
-
-const MARQUEE_ITEMS = [
-  "🗣️ Language",
-  "🎵 Music",
-  "🏺 Arts & Crafts",
-  "📖 Literature",
-  "🎬 Video",
-  "✈️ Experiences",
-  "🥁 Instruments",
-  "🌍 Culture",
-  "🎨 Visual Arts",
-  "🎤 Spoken Word",
-];
+import { ContentItem, PlatformStats, TutorWithProfile } from "@/types";
 
 const CATEGORIES = [
   {
@@ -84,12 +71,12 @@ const TESTIMONIALS = [
   },
 ];
 
-// Aspirational platform stats — static for landing page
-const PLATFORM_STATS = [
-  { value: "80K+", label: "Active Learners" },
-  { value: "34", label: "African Languages" },
-  { value: "2,100+", label: "Native Tutors" },
-  { value: "$4.2M", label: "Creator Earnings" },
+// Fallback stats shown when API returns 0 or fails
+const FALLBACK_STATS = [
+  { value: "10+", label: "Creators" },
+  { value: "50+", label: "Content Items" },
+  { value: "4.8★", label: "Avg Rating" },
+  { value: "8", label: "Languages" },
 ];
 
 const FEATURES = [
@@ -107,9 +94,12 @@ export function HomeClient() {
   const { isConnected, login } = useAuth();
   const [content, setContent] = useState<ContentItem[]>([]);
   const [creators, setCreators] = useState<TutorWithProfile[]>([]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
   const [loadingContent, setLoadingContent] = useState(true);
   const [loadingCreators, setLoadingCreators] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [categoryCounts, setCategoryCounts] = useState<CategoryCounts>({});
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -118,6 +108,12 @@ export function HomeClient() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((result: { data?: PlatformStats }) => setPlatformStats(result.data ?? null))
+      .catch(() => setPlatformStats(null))
+      .finally(() => setLoadingStats(false));
+
     fetch("/api/content?limit=6")
       .then((r) => r.json())
       .then((result: { data?: { items: ContentItem[] } }) => setContent(result.data?.items ?? []))
@@ -133,7 +129,8 @@ export function HomeClient() {
     fetch("/api/stats/categories")
       .then((r) => r.json())
       .then((result: { data?: CategoryCounts }) => setCategoryCounts(result.data ?? {}))
-      .catch(() => setCategoryCounts({}));
+      .catch(() => setCategoryCounts({}))
+      .finally(() => setLoadingCategories(false));
   }, []);
 
   return (
@@ -164,7 +161,7 @@ export function HomeClient() {
             </Link>
             <Link
               href="/explore"
-              className="rounded-full border-2 border-white/30 px-8 py-4 text-lg font-semibold text-white transition hover:bg-white/10"
+              className="rounded-full border-2 border-white/50 bg-white/10 px-8 py-4 text-lg font-semibold text-white transition hover:bg-white/20"
             >
               Browse Marketplace
             </Link>
@@ -173,28 +170,23 @@ export function HomeClient() {
             ✓ Pay with cUSD &nbsp;·&nbsp; ✓ Creator royalties on-chain &nbsp;·&nbsp; ✓ Powered by Celo
           </p>
         </div>
-
-        {/* Marquee strip */}
-        <div className="absolute bottom-0 left-0 right-0 overflow-hidden border-t border-white/10 py-4">
-          <div className="flex w-max animate-marquee gap-6">
-            {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
-              <span
-                key={i}
-                className="whitespace-nowrap rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* ── STATS ── */}
       <section className="border-b border-t border-gray-100 bg-white py-20">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4 lg:px-8">
-          {PLATFORM_STATS.map((stat, i) => (
+          {[
+            { value: platformStats?.creators ? String(platformStats.creators) : FALLBACK_STATS[0].value, label: "Creators" },
+            { value: platformStats?.content  ? String(platformStats.content)  : FALLBACK_STATS[1].value, label: "Content Items" },
+            { value: platformStats?.rating   ? `${platformStats.rating}★`    : FALLBACK_STATS[2].value, label: "Avg Rating" },
+            { value: platformStats?.learners ? String(platformStats.learners) : FALLBACK_STATS[3].value, label: "Learners" },
+          ].map((stat, i) => (
             <div key={stat.label} className={`text-center ${i > 0 ? "md:border-l md:border-gray-100" : ""}`}>
-              <p className="font-serif text-5xl font-black text-[#1a4731]">{stat.value}</p>
+              {loadingStats ? (
+                <div className="mx-auto h-12 w-24 animate-pulse rounded bg-gray-100" />
+              ) : (
+                <p className="font-serif text-5xl font-black text-[#1a4731]">{stat.value}</p>
+              )}
               <p className="mt-2 text-sm font-semibold uppercase tracking-widest text-gray-400">{stat.label}</p>
             </div>
           ))}
@@ -286,11 +278,15 @@ export function HomeClient() {
                 <span className="text-4xl">{cat.icon}</span>
                 <h3 className="mt-3 text-xl font-bold text-[#1a4731]">{cat.name}</h3>
                 <p className="mt-2 text-sm text-gray-500">{cat.desc}</p>
-                {categoryCounts[cat.slug] !== undefined ? (
+                {loadingCategories ? (
+                  <div className="mt-4 h-4 w-20 animate-pulse rounded bg-gray-200" />
+                ) : (
                   <p className="mt-4 text-sm font-bold text-[#FFBF00]">
-                    {categoryCounts[cat.slug]} items
+                    {(categoryCounts[cat.slug] ?? 0) > 0
+                      ? `${categoryCounts[cat.slug]} item${categoryCounts[cat.slug] === 1 ? "" : "s"}`
+                      : "Be the first to publish"}
                   </p>
-                ) : null}
+                )}
               </Link>
             ))}
           </div>
