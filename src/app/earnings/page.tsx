@@ -29,6 +29,17 @@ function EarningsClient() {
   const [loading, setLoading] = useState(true)
   const [withdrawingToken, setWithdrawingToken] = useState(false)
   const [withdrawingCelo, setWithdrawingCelo] = useState(false)
+  const [withdrawalWallet, setWithdrawalWallet] = useState('')
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('lugha_profile')
+      if (stored) {
+        const p = JSON.parse(stored) as Record<string, unknown>
+        setWithdrawalWallet((p.withdrawal_wallet as string | undefined) ?? '')
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const wallet = address as `0x${string}` | undefined
   const { tokenBalance, celoBalance } = useCreatorBalances(wallet)
@@ -165,6 +176,48 @@ function EarningsClient() {
               )) : <p className="text-foreground/60">No transactions yet.</p>}
             </div>
           </section>
+
+          {/* Payout Settings */}
+          <div className="mt-8 rounded-2xl border border-gray-100 bg-white p-6">
+            <h3 className="font-serif text-xl font-black text-[#1a4731]">Payout Settings</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Where should your earnings go? Leave blank to use your connected wallet.
+            </p>
+            <label className="mt-4 block text-sm font-semibold text-[#171717]">
+              Withdrawal Wallet Address
+            </label>
+            <input
+              type="text"
+              placeholder="0x… (defaults to your connected wallet)"
+              value={withdrawalWallet}
+              onChange={(e) => setWithdrawalWallet(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 font-mono text-sm focus:border-[#FFBF00] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                void fetch('/api/profiles/me', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', 'x-wallet-address': address ?? '' },
+                  body: JSON.stringify({ withdrawal_wallet: withdrawalWallet }),
+                }).then(() => {
+                  toast({ title: 'Payout address saved', type: 'success' })
+                  // sync localStorage
+                  try {
+                    const stored = localStorage.getItem('lugha_profile')
+                    if (stored) {
+                      const p = JSON.parse(stored) as Record<string, unknown>
+                      p.withdrawal_wallet = withdrawalWallet
+                      localStorage.setItem('lugha_profile', JSON.stringify(p))
+                    }
+                  } catch { /* ignore */ }
+                })
+              }}
+              className="mt-4 rounded-full bg-[#FFBF00] px-6 py-2 text-sm font-black text-[#171717] hover:bg-[#e6ac00]"
+            >
+              Save Payout Address
+            </button>
+          </div>
         </FadeIn>
       </ErrorBoundary>
     </DashboardLayout>

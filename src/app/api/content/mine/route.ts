@@ -1,89 +1,52 @@
-import { jsonError, jsonOk, getWalletAuthenticatedProfile } from '@/lib/api'
-import { getBookOwnerId } from '@/lib/books'
-import { supabaseAdmin } from '@/lib/supabase'
-import { Book, ContentType, Post, TutorContentItem } from '@/types'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-function mapBook(book: Book): TutorContentItem {
-  return {
-    id: book.id,
-    type: book.content_type === 'lesson' ? 'lesson' : 'book',
-    title: book.title,
-    description: book.description,
-    level: book.level,
-    price: Number(book.price ?? 0),
-    cover_image_url: book.cover_image_url,
-    file_url: book.file_url,
-    tags: book.tags,
-    language: book.language,
-    author_id: getBookOwnerId(book),
-    created_at: book.created_at,
-    published: book.published ?? true,
-    view_count: 0,
-    purchase_count: 0,
-    earnings: 0,
-  }
-}
+export async function GET(request: NextRequest) {
+  const wallet = request.headers.get('x-wallet-address')
+  if (!wallet) return NextResponse.json({ data: [] })
 
-function mapPost(post: Post): TutorContentItem {
-  return {
-    id: post.id,
-    type: 'post',
-    title: post.title,
-    description: post.content.slice(0, 180),
-    content: post.content,
-    level: null,
-    price: post.is_premium ? Number(post.price ?? 0) : 0,
-    cover_image_url: post.cover_image_url,
-    file_url: null,
-    tags: post.tags,
-    language: post.language,
-    author_id: post.author_id,
-    created_at: post.created_at,
-    published: post.published ?? true,
-    view_count: 0,
-    purchase_count: 0,
-    earnings: 0,
-  }
-}
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
-export async function GET(request: Request) {
-  const auth = await getWalletAuthenticatedProfile(request)
-  if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
-  if (auth.profile.role !== 'tutor' && auth.profile.role !== 'admin') {
-    return jsonError('Only creators can access this endpoint', 403)
-  }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('wallet_address', wallet.toLowerCase())
+    .maybeSingle()
 
-  try {
-    const [{ data: books }, { data: posts }] = await Promise.all([
-      supabaseAdmin.from('books').select('*').eq('tutor_id', auth.profile.id).order('created_at', { ascending: false }),
-      supabaseAdmin.from('posts').select('*').eq('author_id', auth.profile.id).order('created_at', { ascending: false }),
-    ])
+  if (!profile) return NextResponse.json({ data: [] })
 
-    const items: TutorContentItem[] = [
-      ...((books ?? []) as Book[]).map(mapBook),
-      ...((posts ?? []) as Post[]).map(mapPost),
-    ]
+  const [booksRes, postsRes, videosRes, musicRes] = await Promise.all([
+    supabase
+      .from('books')
+      .select('id,title,price,published,created_at,cover_image_url')
+      .eq('tutor_id', profile.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('posts')
+      .select('id,title,price,is_premium,published,created_at,cover_image_url')
+      .eq('author_id', profile.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('videos')
+      .select('id,title,price,published,created_at,thumbnail_url')
+      .eq('creator_id', profile.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('music')
+      .select('id,title,price,published,created_at,cover_image_url')
+      .eq('creator_id', profile.id)
+      .order('created_at', { ascending: false }),
+  ])
 
-    const enriched = await Promise.all(
-      items.map(async (item) => {
-        const { count, data } = await supabaseAdmin
-          .from('purchases')
-          .select('amount')
-          .eq('content_id', item.id)
-          .eq('content_type', item.type)
+  const all = [
+    ...(booksRes.data ?? []).map((b) => ({ ...b, type: 'book', is_free: Number(b.price ?? 0) === 0 })),
+    ...(postsRes.data ?? []).map((p) => ({ ...p, type: 'post', is_free: !p.is_premium })),
+    ...(videosRes.data ?? []).map((v) => ({ ...v, type: 'video', is_free: Number(v.price ?? 0) === 0 })),
+    ...(musicRes.data ?? []).map((m) => ({ ...m, type: 'music', is_free: Number(m.price ?? 0) === 0 })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-        const earnings = (data ?? []).reduce((sum, row) => sum + Number(row.amount ?? 0), 0)
-        return {
-          ...item,
-          purchase_count: count ?? 0,
-          earnings: Number(earnings.toFixed(2)),
-        }
-      }),
-    )
-
-    enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    return jsonOk({ items: enriched }, 'Creator content loaded')
-  } catch {
-    return jsonOk({ items: [] }, 'Creator content loaded')
-  }
+  return NextResponse.json({ data: all })
 }

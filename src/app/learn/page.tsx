@@ -1,11 +1,5 @@
-import type { Metadata } from 'next'
-import { LearnClient } from '@/components/LearnClient'
-
-export const metadata: Metadata = {
-  title: 'Content Library — LughaPro',
-  description: 'Browse books, posts, and lessons from top Kiswahili creators.',
-}
+import { redirect } from 'next/navigation'
 
 export default function LearnPage() {
-  return <LearnClient />
+  redirect('/explore')
 }

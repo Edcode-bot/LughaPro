@@ -1,6 +1,5 @@
 'use client'
 
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ChangeEvent, FormEvent, Suspense, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
@@ -20,15 +19,18 @@ function CoverPreview({ src }: { src: string }) {
   )
 }
 
-async function uploadFile(file: File, bucket: string): Promise<string> {
-  const supabase = createBrowserSupabaseClient()
-  const fileName = `${Date.now()}-${file.name.replace(/[^a-z0-9.-]/gi, '-')}`
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(fileName, file, { cacheControl: '3600', upsert: true })
-  if (error) throw new Error(error.message)
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path)
-  return urlData.publicUrl
+async function uploadFile(file: File, bucket: string, wallet: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('bucket', bucket)
+  const res = await fetch('/api/upload/cover', {
+    method: 'POST',
+    headers: { 'x-wallet-address': wallet },
+    body: formData,
+  })
+  const data = await res.json() as { url?: string; error?: string }
+  if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
+  return data.url
 }
 
 function getWalletAddress(): string | null {
@@ -103,9 +105,9 @@ function PublishClient() {
     setSubmitting(true)
     try {
       let cover_image_url: string | undefined
-      if (bookCoverFile) cover_image_url = await uploadFile(bookCoverFile, 'covers')
+      if (bookCoverFile) cover_image_url = await uploadFile(bookCoverFile, 'covers', wallet)
       let file_url = book.file_url.trim() || undefined
-      if (bookFileMode === 'upload' && bookFile) file_url = await uploadFile(bookFile, 'books')
+      if (bookFileMode === 'upload' && bookFile) file_url = await uploadFile(bookFile, 'books', wallet)
       const price = book.isFree ? 0 : Number(book.price)
       const res = await fetch('/api/content/books', {
         method: 'POST',
@@ -129,7 +131,7 @@ function PublishClient() {
     setSubmitting(true)
     try {
       let cover_image_url: string | undefined
-      if (postCoverFile) cover_image_url = await uploadFile(postCoverFile, 'covers')
+      if (postCoverFile) cover_image_url = await uploadFile(postCoverFile, 'covers', wallet)
       const res = await fetch('/api/content/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet, 'x-lugha-role': 'tutor' },
@@ -152,7 +154,7 @@ function PublishClient() {
     setSubmitting(true)
     try {
       let thumbnail_url: string | null = null
-      if (videoThumbFile) thumbnail_url = await uploadFile(videoThumbFile, 'covers')
+      if (videoThumbFile) thumbnail_url = await uploadFile(videoThumbFile, 'covers', wallet)
       const res = await fetch('/api/content/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
@@ -175,7 +177,7 @@ function PublishClient() {
     setSubmitting(true)
     try {
       let cover_image_url: string | null = null
-      if (musicCoverFile) cover_image_url = await uploadFile(musicCoverFile, 'covers')
+      if (musicCoverFile) cover_image_url = await uploadFile(musicCoverFile, 'covers', wallet)
       const res = await fetch('/api/content/music', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
@@ -253,7 +255,7 @@ function PublishClient() {
               </label>
               {!book.isFree && (
                 <label className="grid gap-2 text-sm font-semibold text-forest">
-                  Price (cUSD)
+                  Price (USD equivalent)
                   <input type="number" min={0} step="0.01" value={book.price} onChange={(e) => setBook({ ...book, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
                 </label>
               )}
@@ -287,11 +289,11 @@ function PublishClient() {
               {postCoverPreview ? <CoverPreview src={postCoverPreview} /> : null}
               <label className="flex items-center gap-2 text-sm font-semibold text-forest">
                 <input type="checkbox" checked={post.is_premium} onChange={(e) => setPost({ ...post, is_premium: e.target.checked })} />
-                Premium (paid) content
+                Paid content
               </label>
               {post.is_premium && (
                 <label className="grid gap-2 text-sm font-semibold text-forest">
-                  Price (cUSD)
+                  Price (USD equivalent)
                   <input type="number" min={0} step="0.01" value={post.price} onChange={(e) => setPost({ ...post, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
                 </label>
               )}
@@ -328,7 +330,7 @@ function PublishClient() {
                 </div>
               </div>
               <label className="grid gap-2 text-sm font-semibold text-forest">
-                Price (cUSD — 0 = Free)
+                Price (USD equivalent — 0 = free for everyone)
                 <input type="number" min={0} step="0.01" value={video.price} onChange={(e) => setVideo({ ...video, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
               </label>
               <Field label="Tags (comma separated)" value={video.tags} onChange={(v) => setVideo({ ...video, tags: v })} />
@@ -351,7 +353,7 @@ function PublishClient() {
               <Field label="Genre (Traditional, Contemporary, Folk…)" value={music.genre} onChange={(v) => setMusic({ ...music, genre: v })} />
               <Field label="Instrument (if applicable)" value={music.instrument} onChange={(v) => setMusic({ ...music, instrument: v })} />
               <label className="grid gap-2 text-sm font-semibold text-forest">
-                Price (cUSD — 0 = Free)
+                Price (USD equivalent — 0 = free for everyone)
                 <input type="number" min={0} step="0.01" value={music.price} onChange={(e) => setMusic({ ...music, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
               </label>
               <Field label="Tags (comma separated)" value={music.tags} onChange={(v) => setMusic({ ...music, tags: v })} />

@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { SearchOverlay } from "@/components/ui/SearchOverlay";
 import { initials } from "@/lib/content";
@@ -15,7 +15,24 @@ export function NavBar() {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { isConnected, displayName, address, role, disconnect, login } = useAuth();
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const stored = localStorage.getItem('lugha_profile');
+        if (stored) setAvatarUrl((JSON.parse(stored) as Record<string, unknown>).avatar_url as string | null ?? null);
+      } catch { /* ignore */ }
+    };
+    refresh();
+    window.addEventListener('storage', refresh);
+    window.addEventListener('lugha_profile_updated', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('lugha_profile_updated', refresh);
+    };
+  }, []);
 
   const publicLinks = [
     { label: "Explore", href: "/explore" },
@@ -92,9 +109,14 @@ export function NavBar() {
                     onClick={() => setMenuOpen((v) => !v)}
                     className="flex min-h-11 items-center gap-2 rounded-full bg-off-white px-3 py-2"
                   >
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-xs font-bold text-foreground">
-                      {initials(displayName)}
-                    </span>
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt="avatar" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-xs font-bold text-foreground">
+                        {initials(displayName)}
+                      </span>
+                    )}
                     <ChevronDown className="h-4 w-4 text-forest" />
                   </button>
                   {menuOpen ? (
@@ -156,10 +178,15 @@ export function NavBar() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="grid h-10 w-10 place-items-center rounded-full bg-gold text-xs font-bold text-foreground"
+                className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-gold text-xs font-bold text-foreground"
                 aria-label="Account menu"
               >
-                {initials(displayName)}
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+                ) : (
+                  initials(displayName)
+                )}
               </button>
             )}
             <button

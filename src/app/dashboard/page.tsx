@@ -29,14 +29,14 @@ function UnifiedDashboard() {
   useEffect(() => {
     if (!address) return
     Promise.all([
-      fetch('/api/content/mine', { headers: { 'x-wallet-address': address } }).then((r) => r.json()),
+      fetch('/api/content/mine', { headers: { 'x-wallet-address': address } }).then((r) => r.json() as Promise<{ data?: { id: string; type: string; title: string; price: number }[] }>),
       fetch(`/api/purchases/recent?user=${address}&limit=3`).then((r) => r.json()),
       fetch('/api/content?limit=3').then((r) => r.json()),
       fetch('/api/earnings', { headers: { 'x-wallet-address': address } }).then((r) => r.json()),
       fetch(`/api/dashboard/stats?user=${address}`).then((r) => r.json()),
     ])
       .then(([contentRes, recentRes, browseRes, earningsRes, statsRes]) => {
-        const items: TutorContentItem[] = contentRes.data?.items ?? []
+        const items = (contentRes.data ?? []) as TutorContentItem[]
         setMyContent(items.slice(0, 3))
         setRecentPurchases(recentRes.data?.items ?? [])
         setRecommended(browseRes.data?.items ?? [])

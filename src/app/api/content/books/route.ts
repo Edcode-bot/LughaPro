@@ -42,7 +42,6 @@ export async function POST(request: Request) {
         file_url: body.file_url ?? null,
         tags: body.tags ?? [],
         language: body.language ?? 'Kiswahili',
-        content_type: body.content_type ?? 'book',
         published: true,
       })
       .select('*')

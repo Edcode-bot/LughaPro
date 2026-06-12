@@ -49,14 +49,12 @@ function OnboardingForm() {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? '')
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url ?? '')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<'student' | 'tutor'>('student')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !address) return
-    // Show immediate preview
     setAvatarPreview(URL.createObjectURL(file))
     setUploadingAvatar(true)
     try {
@@ -71,6 +69,16 @@ function OnboardingForm() {
       if (data.url) {
         setAvatarUrl(data.url)
         setAvatarPreview(data.url)
+        // Sync localStorage and notify navbar
+        try {
+          const stored = localStorage.getItem('lugha_profile')
+          if (stored) {
+            const parsed = JSON.parse(stored) as Record<string, unknown>
+            parsed.avatar_url = data.url
+            localStorage.setItem('lugha_profile', JSON.stringify(parsed))
+            window.dispatchEvent(new Event('lugha_profile_updated'))
+          }
+        } catch { /* ignore */ }
       } else {
         console.error('Upload failed:', data.error)
         setAvatarPreview('')
@@ -100,16 +108,12 @@ function OnboardingForm() {
 
     const response = await fetch('/api/profiles/me', {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-wallet-address': address,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
       body: JSON.stringify({
         full_name: fullName.trim(),
         country,
         bio: bio.slice(0, 200),
         avatar_url: avatarUrl || null,
-        role: selectedRole,
         onboarding_completed: true,
       }),
     })
@@ -125,6 +129,7 @@ function OnboardingForm() {
     if (result.data) {
       saveStoredProfile(address, result.data)
       setProfile(result.data)
+      window.dispatchEvent(new Event('lugha_profile_updated'))
     }
 
     toast({ title: 'Profile complete!', description: 'Welcome to LughaPro.', type: 'success' })
@@ -222,7 +227,7 @@ function OnboardingForm() {
 
           {/* Bio */}
           <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
-            Bio
+            Bio <span className="font-normal text-gray-400">(optional)</span>
             <textarea
               value={bio}
               maxLength={200}
@@ -233,32 +238,6 @@ function OnboardingForm() {
             />
             <span className="text-right text-xs font-normal text-gray-400">{bio.length}/200</span>
           </label>
-
-          {/* Role selector */}
-          <div>
-            <p className="text-sm font-semibold text-[#1a4731]">I want to…</p>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              {([
-                { value: 'student', emoji: '📚', title: 'Learn', sub: 'Access content & get certified' },
-                { value: 'tutor',   emoji: '🎙️', title: 'Teach & Create', sub: 'Publish content & earn rewards' },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setSelectedRole(opt.value)}
-                  className={`rounded-xl border-2 p-4 text-left transition ${
-                    selectedRole === opt.value
-                      ? 'border-[#FFBF00] bg-[#fdf6e3]'
-                      : 'border-gray-100 bg-white hover:border-[#FFBF00]/50'
-                  }`}
-                >
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <p className="mt-2 font-bold text-[#1a4731]">{opt.title}</p>
-                  <p className="mt-0.5 text-xs text-gray-500">{opt.sub}</p>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {error && (
             <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>

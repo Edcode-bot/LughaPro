@@ -8,6 +8,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
 import { useAuth } from '@/hooks/useAuth'
 import { saveStoredProfile } from '@/lib/profile-storage'
+// withdrawal wallet moved to earnings page
 import { useToast } from '@/components/ui/Toast'
 import { initials } from '@/lib/content'
 
@@ -45,7 +46,7 @@ function Field({ label, value, onChange, readOnly, type = 'text' }: { label: str
 }
 
 function SettingsClient() {
-  const { address, profile, role, setProfile, displayName } = useAuth()
+  const { address, profile, setProfile, displayName } = useAuth()
   const { toast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -53,7 +54,6 @@ function SettingsClient() {
   const [bio, setBio] = useState('')
   const [country, setCountry] = useState('')
   const [languages, setLanguages] = useState('')
-  const [withdrawalWallet, setWithdrawalWallet] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarPreview, setAvatarPreview] = useState('')
   const [saving, setSaving] = useState(false)
@@ -65,7 +65,6 @@ function SettingsClient() {
     setBio(profile.bio ?? '')
     setCountry(profile.country ?? '')
     setLanguages((profile.languages ?? []).join(', '))
-    setWithdrawalWallet((profile as Record<string, unknown>).withdrawal_wallet as string ?? '')
     setAvatarUrl((profile as Record<string, unknown>).avatar_url as string ?? '')
   }, [profile])
 
@@ -85,13 +84,14 @@ function SettingsClient() {
       const data = await res.json() as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
       setAvatarUrl(data.url)
-      // Sync localStorage profile
+      // Sync localStorage and notify navbar
       try {
         const stored = localStorage.getItem('lugha_profile')
         if (stored) {
           const parsed = JSON.parse(stored) as Record<string, unknown>
           parsed.avatar_url = data.url
           localStorage.setItem('lugha_profile', JSON.stringify(parsed))
+          window.dispatchEvent(new Event('lugha_profile_updated'))
         }
       } catch { /* ignore */ }
       toast({ title: 'Avatar updated', type: 'success' })
@@ -109,7 +109,7 @@ function SettingsClient() {
     const res = await fetch('/api/profiles/me', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
-      body: JSON.stringify({ full_name: fullName, bio, country, languages, withdrawal_wallet: withdrawalWallet }),
+      body: JSON.stringify({ full_name: fullName, bio, country, languages }),
     })
     const result = await res.json()
     setSaving(false)
@@ -120,6 +120,7 @@ function SettingsClient() {
     if (result.data) {
       saveStoredProfile(address, result.data)
       setProfile(result.data)
+      window.dispatchEvent(new Event('lugha_profile_updated'))
     }
     toast({ title: 'Profile saved', type: 'success' })
   }
@@ -181,18 +182,9 @@ function SettingsClient() {
             {/* ── ACCOUNT ── */}
             <Section title="Account">
               <Field label="Wallet Address" value={address ?? ''} readOnly />
-              <p className="text-sm font-semibold text-[#1a4731]">
-                Role: <span className="rounded-full bg-[#f8f4ef] px-3 py-1 capitalize">{role === 'tutor' ? 'Creator' : role}</span>
+              <p className="text-xs text-gray-400">
+                Member since {profile ? new Date((profile as Record<string, unknown>).created_at as string ?? Date.now()).toLocaleDateString() : '—'}
               </p>
-              <Field label="Withdrawal wallet (for payouts)" value={withdrawalWallet} onChange={setWithdrawalWallet} />
-              <button
-                type="button"
-                onClick={() => void save()}
-                disabled={saving}
-                className="rounded-full bg-[#1a4731] px-6 py-3 text-sm font-bold text-white disabled:opacity-50"
-              >
-                Save
-              </button>
             </Section>
 
             {/* ── DANGER ZONE ── */}

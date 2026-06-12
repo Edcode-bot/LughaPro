@@ -78,6 +78,32 @@ export function useAuth() {
     if (authenticated && address) void refreshProfile()
   }, [authenticated, address, refreshProfile])
 
+  // Post-login redirect: from public pages → dashboard or onboarding
+  useEffect(() => {
+    if (!authenticated || !ready || !address) return
+    if (typeof window === 'undefined') return
+    const publicPaths = ['/', '/explore', '/creators', '/about', '/help', '/privacy', '/guidelines', '/careers', '/auth/login', '/auth/register']
+    const currentPath = window.location.pathname
+    if (!publicPaths.includes(currentPath)) return
+    // Attempt login/register and redirect accordingly
+    fetch('/api/auth/wallet-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, address }),
+    })
+      .then((r) => r.json())
+      .then((result: { data?: { profile?: { onboarding_completed?: boolean }; isNew?: boolean } }) => {
+        const prof = result.data?.profile
+        if (!prof) return
+        if (!prof.onboarding_completed) {
+          window.location.href = '/onboarding'
+        } else {
+          window.location.href = '/dashboard'
+        }
+      })
+      .catch(() => {})
+  }, [authenticated, ready, address])
+
   function disconnect() {
     if (wagmiAddress) clearStoredProfile(wagmiAddress)
     if (privyWalletAddress) clearStoredProfile(privyWalletAddress as `0x${string}`)

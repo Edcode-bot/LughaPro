@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { NavBar } from "@/components/ui/NavBar";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +24,7 @@ import { shortenAddress } from "@/lib/minipay";
 
 const allLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/learn", label: "Explore", icon: Home },
+  { href: "/explore", label: "Explore", icon: Home },
   { href: "/library", label: "My Library", icon: BookOpen },
   { href: "/my-content", label: "My Content", icon: FileText },
   { href: "/publish", label: "Publish", icon: PenSquare },
@@ -37,6 +37,23 @@ const allLinks = [
 export function DashboardLayout({ children }: { children: ReactNode; role?: string }) {
   const pathname = usePathname();
   const { displayName, address, disconnect } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const stored = localStorage.getItem('lugha_profile');
+        if (stored) setAvatarUrl((JSON.parse(stored) as Record<string, unknown>).avatar_url as string | null ?? null);
+      } catch { /* ignore */ }
+    };
+    refresh();
+    window.addEventListener('storage', refresh);
+    window.addEventListener('lugha_profile_updated', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('lugha_profile_updated', refresh);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -44,8 +61,13 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
       <div className="lg:flex">
         <aside className="hidden w-72 shrink-0 flex-col bg-forest p-6 text-cream lg:flex lg:min-h-[calc(100vh-72px)]">
           <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-4">
-            <div className="grid h-11 w-11 place-items-center rounded-full bg-gold text-sm font-black text-foreground">
-              {initials(displayName)}
+            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gold text-sm font-black text-foreground">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+              ) : (
+                initials(displayName)
+              )}
             </div>
             <div className="min-w-0">
               <p className="truncate font-bold">{displayName}</p>
