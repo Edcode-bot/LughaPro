@@ -78,13 +78,15 @@ export function useAuth() {
     if (authenticated && address) void refreshProfile()
   }, [authenticated, address, refreshProfile])
 
-  // Post-login redirect: from public pages → dashboard or onboarding
+  // Post-login redirect: only from the landing page and auth pages → dashboard or onboarding
+  // NOTE: /explore, /creators, and all other public pages are intentionally NOT included —
+  // authenticated users must be able to browse them freely.
   useEffect(() => {
     if (!authenticated || !ready || !address) return
     if (typeof window === 'undefined') return
-    const publicPaths = ['/', '/explore', '/creators', '/about', '/help', '/privacy', '/guidelines', '/careers', '/auth/login', '/auth/register']
+    const redirectFromPaths = ['/', '/auth/login', '/auth/register']
     const currentPath = window.location.pathname
-    if (!publicPaths.includes(currentPath)) return
+    if (!redirectFromPaths.includes(currentPath)) return
     // Attempt login/register and redirect accordingly
     fetch('/api/auth/wallet-login', {
       method: 'POST',
