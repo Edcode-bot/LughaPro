@@ -40,11 +40,24 @@ export default function CreatorsPage() {
   return (
     <main className="min-h-screen bg-white">
       <NavBar />
+
+      {/* Hero */}
+      <section className="relative bg-[#171717] pt-16 pb-20 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#FFBF00]/10 blur-[120px] pointer-events-none" />
+        <div className="absolute -bottom-20 right-0 w-96 h-96 rounded-full bg-[#1a4731]/30 blur-[100px] pointer-events-none" />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FFBF00]/30 bg-[#FFBF00]/10 px-4 py-1.5 mb-6">
+            <span className="h-2 w-2 rounded-full bg-[#FFBF00] animate-pulse" />
+            <span className="text-[#FFBF00] text-sm font-semibold">Verified African Creators</span>
+          </div>
+          <h1 className="font-serif text-5xl md:text-7xl font-black text-white">Africa&apos;s Creators</h1>
+          <p className="mt-4 max-w-xl text-white/60 text-lg">
+            Educators, musicians, artists, and storytellers sharing their culture with the world.
+          </p>
+        </div>
+      </section>
+
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="font-serif text-5xl font-black text-[#171717]">Africa&apos;s Creators</h1>
-        <p className="mt-3 max-w-xl text-gray-500">
-          Educators, musicians, artists, and storytellers sharing their culture with the world.
-        </p>
 
         {/* Search */}
         <form onSubmit={onSubmit} className="relative mt-8 max-w-xl">
@@ -84,7 +97,7 @@ export default function CreatorsPage() {
             : creators.map((creator) => (
                 <article
                   key={creator.id}
-                  className="rounded-2xl border border-gray-100 bg-white p-6 transition hover:border-[#FFBF00]"
+                  className="rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:border-[#FFBF00] hover:shadow-xl hover:shadow-[#FFBF00]/10 hover:-translate-y-1"
                 >
                   <div className="flex items-start gap-4">
                     <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#1a4731] text-lg font-black text-white">

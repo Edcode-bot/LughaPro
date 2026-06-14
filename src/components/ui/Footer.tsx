@@ -55,14 +55,15 @@ export function Footer() {
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">
               Learn. Discover. Preserve. — Where Africa&apos;s languages, arts, music, and wisdom are alive — and open to the world.
             </p>
-            <span className="mt-4 inline-flex rounded-full border border-[#FFBF00]/40 px-3 py-1 text-xs font-bold text-[#FFBF00]">
+            <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#FFBF00]/40 px-3 py-1 text-xs font-bold text-[#FFBF00]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#FFBF00] animate-pulse" />
               Powered by Celo blockchain
             </span>
           </div>
 
           {columns.map((column) => (
             <div key={column.title}>
-              <h3 className="font-bold text-[#FFBF00]">{column.title}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40">{column.title}</h3>
               <div className="mt-4 grid gap-3 text-sm text-white/60">
                 {column.links.map((link) => (
                   <Link key={link.label} href={link.href} className="transition hover:text-white">

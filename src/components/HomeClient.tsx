@@ -16,37 +16,37 @@ const CATEGORIES = [
     icon: "🗣️",
     name: "Language",
     slug: "language",
-    desc: "Learn African languages from native speakers — Kiswahili, Yoruba, Amharic, and more",
+    description: "Learn African languages from native speakers — Kiswahili, Yoruba, Amharic, and more",
   },
   {
     icon: "🎵",
     name: "Music",
     slug: "music",
-    desc: "Traditional songs, instruments, and contemporary African sounds",
+    description: "Traditional songs, instruments, and contemporary African sounds",
   },
   {
     icon: "🏺",
     name: "Arts & Crafts",
     slug: "arts",
-    desc: "Authentic handmade goods and digital art from African artisans",
+    description: "Authentic handmade goods and digital art from African artisans",
   },
   {
     icon: "📖",
     name: "Literature",
     slug: "literature",
-    desc: "Books, poetry, and stories from African writers",
+    description: "Books, poetry, and stories from African writers",
   },
   {
     icon: "🎬",
     name: "Video",
     slug: "video",
-    desc: "Documentaries, lessons, and cultural storytelling",
+    description: "Documentaries, lessons, and cultural storytelling",
   },
   {
     icon: "✈️",
     name: "Experiences",
     slug: "experience",
-    desc: "Live virtual sessions and guided cultural journeys",
+    description: "Live virtual sessions and guided cultural journeys",
   },
 ];
 
@@ -71,7 +71,6 @@ const TESTIMONIALS = [
   },
 ];
 
-// Fallback stats shown when API returns 0 or fails
 const FALLBACK_STATS = [
   { value: "10+", label: "Creators" },
   { value: "50+", label: "Content Items" },
@@ -133,82 +132,239 @@ export function HomeClient() {
       .finally(() => setLoadingCategories(false));
   }, []);
 
+  const stats = [
+    { value: platformStats?.creators ? String(platformStats.creators) : FALLBACK_STATS[0].value, label: "Creators" },
+    { value: platformStats?.content  ? String(platformStats.content)  : FALLBACK_STATS[1].value, label: "Content Items" },
+    { value: platformStats?.rating   ? `${platformStats.rating}★`    : FALLBACK_STATS[2].value, label: "Avg Rating" },
+    { value: platformStats?.learners ? String(platformStats.learners) : FALLBACK_STATS[3].value, label: "Learners" },
+  ];
+
   return (
     <main className="min-h-screen bg-white">
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#171717] px-4 text-center">
-        <div className="relative z-10 flex max-w-4xl flex-col items-center">
-          <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/60">
-            🌍 Africa&apos;s cultural content platform
-          </span>
-          <h1 className="font-serif text-6xl font-black leading-none tracking-tight text-white md:text-8xl">
-            Learn. Discover.<br />Preserve.
+      <section className="relative min-h-screen bg-[#171717] flex flex-col items-center justify-center overflow-hidden">
+        {/* Ambient glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-[#FFBF00]/10 blur-[120px]" />
+          <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-[#1a4731]/30 blur-[100px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-[#FFBF00]/5 blur-[80px]" />
+        </div>
+
+        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
+          {/* Eyebrow badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FFBF00]/30 bg-[#FFBF00]/10 px-4 py-1.5 mb-8">
+            <span className="h-2 w-2 rounded-full bg-[#FFBF00] animate-pulse" />
+            <span className="text-[#FFBF00] text-sm font-semibold">Powered by Celo Blockchain</span>
+          </div>
+
+          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[0.95] tracking-tight">
+            Learn.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFBF00] to-[#e6ac00]">
+              Discover.
+            </span>
+            {" "}Preserve.
           </h1>
-          <p className="mt-6 max-w-2xl text-xl leading-relaxed text-white/60 md:text-2xl">
+
+          <p className="mt-6 text-lg md:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
             Where Africa&apos;s languages, arts, music, and wisdom are alive — and open to the world.
           </p>
-          <p className="mt-3 max-w-3xl text-lg leading-relaxed text-white/50">
-            LughaPro is the definitive gateway to African culture. Learn languages from native tutors, discover authentic crafts, stream traditional music, and earn blockchain-verified credentials. Every purchase directly supports African creators and communities.
+
+          <p className="mt-3 text-base text-white/40 max-w-xl mx-auto">
+            Learn from native tutors. Discover authentic crafts. Stream traditional music. Every purchase supports African creators directly.
           </p>
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/explore"
-              className="rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
+              className="rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition-all hover:scale-105 shadow-lg shadow-[#FFBF00]/25"
             >
               Start Exploring ↗
             </Link>
             <Link
               href="/explore"
-              className="rounded-full border-2 border-white/50 bg-white/10 px-8 py-4 text-lg font-semibold text-white transition hover:bg-white/20"
+              className="rounded-full border border-white/20 px-8 py-4 text-lg font-semibold text-white hover:bg-white/10 transition-all backdrop-blur-sm"
             >
               Browse Marketplace
             </Link>
           </div>
-          <p className="mt-8 text-sm text-white/40">
-            ✓ Pay with cUSD &nbsp;·&nbsp; ✓ Creator royalties on-chain &nbsp;·&nbsp; ✓ Powered by Celo
-          </p>
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-white/30 text-sm">
+            <span>✓ Pay with cUSD, CELO, or USDT</span>
+            <span className="hidden md:block">·</span>
+            <span>✓ Creator royalties on-chain</span>
+            <span className="hidden md:block">·</span>
+            <span>✓ Blockchain-verified certificates</span>
+          </div>
+        </div>
+
+        {/* Bottom wave divider */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]">
+          <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16 md:h-20">
+            <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f8f4ef" />
+          </svg>
         </div>
       </section>
 
       {/* ── STATS ── */}
-      <section className="border-b border-t border-gray-100 bg-white py-20">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4 lg:px-8">
-          {[
-            { value: platformStats?.creators ? String(platformStats.creators) : FALLBACK_STATS[0].value, label: "Creators" },
-            { value: platformStats?.content  ? String(platformStats.content)  : FALLBACK_STATS[1].value, label: "Content Items" },
-            { value: platformStats?.rating   ? `${platformStats.rating}★`    : FALLBACK_STATS[2].value, label: "Avg Rating" },
-            { value: platformStats?.learners ? String(platformStats.learners) : FALLBACK_STATS[3].value, label: "Learners" },
-          ].map((stat, i) => (
-            <div key={stat.label} className={`text-center ${i > 0 ? "md:border-l md:border-gray-100" : ""}`}>
-              {loadingStats ? (
-                <div className="mx-auto h-12 w-24 animate-pulse rounded bg-gray-100" />
-              ) : (
-                <p className="font-serif text-5xl font-black text-[#1a4731]">{stat.value}</p>
-              )}
-              <p className="mt-2 text-sm font-semibold uppercase tracking-widest text-gray-400">{stat.label}</p>
+      <section className="bg-[#f8f4ef] py-16">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                {loadingStats ? (
+                  <div className="mx-auto h-14 w-28 animate-pulse rounded bg-gray-200" />
+                ) : (
+                  <div className="font-serif text-5xl md:text-6xl font-black text-[#1a4731]">{stat.value}</div>
+                )}
+                <div className="mt-2 text-sm font-semibold uppercase tracking-widest text-gray-400">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CATEGORIES ── */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <div className="text-center mb-16">
+            <h2 className="font-serif text-4xl md:text-5xl font-black text-[#171717]">Everything African Culture</h2>
+            <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">One platform. Every form of African expression.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {CATEGORIES.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/explore?category=${cat.slug}`}
+                className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:border-[#FFBF00] hover:shadow-xl hover:shadow-[#FFBF00]/10 hover:-translate-y-1"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#FFBF00]/0 to-[#FFBF00]/0 group-hover:from-[#FFBF00]/5 group-hover:to-transparent transition-all duration-300 rounded-2xl" />
+                <div className="relative z-10">
+                  <div className="text-4xl mb-4">{cat.icon}</div>
+                  <h3 className="font-bold text-[#1a4731] text-xl">{cat.name}</h3>
+                  <p className="mt-2 text-sm text-gray-500 leading-relaxed">{cat.description}</p>
+                  <div className="mt-4 text-sm font-bold text-[#FFBF00]">
+                    {loadingCategories ? (
+                      <span className="inline-block h-4 w-20 animate-pulse rounded bg-gray-200" />
+                    ) : (categoryCounts[cat.slug] ?? 0) > 0 ? (
+                      `${categoryCounts[cat.slug]} item${categoryCounts[cat.slug] === 1 ? "" : "s"}`
+                    ) : (
+                      "Be the first to publish"
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── LATEST CONTENT ── */}
+      <section className="bg-[#f8f4ef] py-20">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="flex items-end justify-between gap-4 mb-10">
+            <h2 className="font-serif text-4xl font-black text-[#171717]">Latest from Our Creators</h2>
+            <Link href="/explore" className="text-sm font-bold text-[#1a4731] hover:underline">
+              View All →
+            </Link>
+          </div>
+          {loadingContent ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ))}
+          ) : content.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center">
+              <p className="font-bold text-[#171717]">No content published yet — be the first creator!</p>
+              <Link href="/publish" className="mt-4 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">
+                Publish Content
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {content.map((item) => <ContentCard key={item.id} item={item} />)}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── CREATOR SPOTLIGHT ── */}
+      <section className="relative bg-[#171717] py-24 overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-[#1a4731]/40 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full bg-[#FFBF00]/10 blur-[100px] pointer-events-none" />
+
+        <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8">
+          <div className="text-center mb-16">
+            <h2 className="font-serif text-4xl md:text-5xl font-black text-white">Meet Our Creators</h2>
+            <p className="mt-4 text-lg text-white/50">Verified African creators earning royalties on every sale.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {loadingCreators
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-44 animate-pulse rounded-2xl bg-white/10" />
+                ))
+              : creators.map((creator) => (
+                  <Link
+                    key={creator.id}
+                    href={`/tutor/${creator.id}`}
+                    className="group rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 transition-all hover:border-[#FFBF00]/40 hover:bg-white/10"
+                  >
+                    <div className="h-14 w-14 rounded-full bg-[#FFBF00] flex items-center justify-center font-black text-[#171717] text-xl mb-4">
+                      {initials(creator.profile?.full_name ?? "C")}
+                    </div>
+                    <div className="font-bold text-white">{creator.profile?.full_name ?? "Creator"}</div>
+                    <div className="text-sm text-white/50 mt-1">{creator.specialty ?? "African Content"}</div>
+                    {creator.rating > 0 && (
+                      <div className="mt-3 text-xs font-semibold text-[#FFBF00]">★ {creator.rating.toFixed(1)}</div>
+                    )}
+                    <div className="mt-3 text-xs font-bold text-[#FFBF00]/70 group-hover:text-[#FFBF00] transition-colors">View Profile →</div>
+                  </Link>
+                ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link
+              href="/creators"
+              className="inline-flex rounded-full border border-[#FFBF00]/40 px-8 py-3 font-semibold text-[#FFBF00] hover:bg-[#FFBF00] hover:text-[#171717] transition-all"
+            >
+              Find All Creators →
+            </Link>
+          </div>
+        </div>
+
+        {/* Bottom wave */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]">
+          <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16">
+            <path d="M0,0 C480,80 960,0 1440,60 L1440,80 L0,80 Z" fill="#fdf6e3" />
+          </svg>
         </div>
       </section>
 
       {/* ── MISSION & VISION ── */}
-      <section className="bg-[#f8f4ef] py-20">
+      <section className="bg-[#fdf6e3] py-24">
         <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <div className="text-center mb-16">
+            <h2 className="font-serif text-4xl md:text-5xl font-black text-[#171717]">Africa&apos;s Mother Tongue Platform</h2>
+            <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">One platform. Every form of African expression.</p>
+          </div>
 
-          {/* Mission + Vision side by side */}
+          {/* Mission + Vision */}
           <div className="mb-16 grid gap-8 md:grid-cols-2">
-            <div className="rounded-2xl border border-gray-100 bg-white p-8">
-              <div className="mb-4 text-3xl">🎯</div>
-              <h3 className="mb-4 font-serif text-2xl font-black text-[#1a4731]">Our Mission</h3>
+            <div className="rounded-2xl bg-white p-8 border-l-4 border-[#FFBF00]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-full bg-[#FFBF00]/20 flex items-center justify-center text-lg">🎯</div>
+                <h3 className="font-serif text-2xl font-black text-[#1a4731]">Our Mission</h3>
+              </div>
               <p className="leading-relaxed text-[#171717]/70">
                 Making Africa&apos;s cultural heritage accessible and affordable — because Africa&apos;s languages, arts, music, and wisdom deserve to be alive and open to the world. We put verified creators, cultural authenticity, and fair pay at the heart of every lesson, every track, every craft, and every credential we deliver.
               </p>
             </div>
-            <div className="rounded-2xl border border-gray-100 bg-white p-8">
-              <div className="mb-4 text-3xl">🌍</div>
-              <h3 className="mb-4 font-serif text-2xl font-black text-[#1a4731]">Our Vision</h3>
+            <div className="rounded-2xl bg-white p-8 border-l-4 border-[#1a4731]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-full bg-[#1a4731]/10 flex items-center justify-center text-lg">🌍</div>
+                <h3 className="font-serif text-2xl font-black text-[#1a4731]">Our Vision</h3>
+              </div>
               <p className="leading-relaxed text-[#171717]/70">
                 An Africa where every learner accesses world-class native language education on their terms — through live native tutors, AI-powered practice, a thriving cultural marketplace, and blockchain-verified credentials that open doors globally. A future where every creator is rewarded for the heritage they share, and African culture is not just preserved — but celebrated, streamed, sold, and studied worldwide.
               </p>
@@ -216,20 +372,13 @@ export function HomeClient() {
           </div>
 
           {/* Features grid */}
-          <h2 className="mb-4 text-center font-serif text-4xl font-black text-[#171717]">
-            💡 Africa&apos;s Mother Tongue Platform
-          </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-[#171717]/60">
-            One platform. Every form of African expression.
-          </p>
-
           <div className="mb-12 grid gap-6 md:grid-cols-3">
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="rounded-2xl border border-gray-100 bg-white p-6 transition hover:border-[#FFBF00]"
+                className="rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:border-[#FFBF00] hover:shadow-lg hover:shadow-[#FFBF00]/10 hover:-translate-y-0.5"
               >
-                <div className="mb-3 text-3xl">{f.icon}</div>
+                <div className="h-10 w-10 rounded-full bg-[#f8f4ef] flex items-center justify-center mb-3 text-xl">{f.icon}</div>
                 <h4 className="mb-1 font-bold text-[#171717]">{f.title}</h4>
                 <p className="text-sm text-[#171717]/60">{f.desc}</p>
               </div>
@@ -253,125 +402,24 @@ export function HomeClient() {
             <div className="rounded-2xl bg-[#171717] p-6 text-white">
               <h4 className="mb-3 font-serif text-xl font-black">For Enterprises</h4>
               <p className="text-sm leading-relaxed text-white/70">
-                Corporate language training for multinationals, UN agencies & governments. Custom credentials, SDG reporting, API access.
+                Corporate language training for multinationals, UN agencies &amp; governments. Custom credentials, SDG reporting, API access.
               </p>
             </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── CATEGORIES ── */}
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-center font-serif text-4xl font-black text-[#171717]">Everything African Culture</h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-gray-500">
-            Explore every category of African creative expression.
-          </p>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.slug}
-                href={`/explore?category=${cat.slug}`}
-                className="group rounded-2xl border border-gray-100 bg-[#f8f4ef] p-8 transition hover:-translate-y-1 hover:border-[#FFBF00] hover:shadow-sm"
-              >
-                <span className="text-4xl">{cat.icon}</span>
-                <h3 className="mt-3 text-xl font-bold text-[#1a4731]">{cat.name}</h3>
-                <p className="mt-2 text-sm text-gray-500">{cat.desc}</p>
-                {loadingCategories ? (
-                  <div className="mt-4 h-4 w-20 animate-pulse rounded bg-gray-200" />
-                ) : (
-                  <p className="mt-4 text-sm font-bold text-[#FFBF00]">
-                    {(categoryCounts[cat.slug] ?? 0) > 0
-                      ? `${categoryCounts[cat.slug]} item${categoryCounts[cat.slug] === 1 ? "" : "s"}`
-                      : "Be the first to publish"}
-                  </p>
-                )}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── LATEST CONTENT ── */}
-      <section className="bg-[#f8f4ef] py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-serif text-4xl font-black text-[#171717]">Latest from Our Creators</h2>
-            <Link href="/explore" className="text-sm font-bold text-[#1a4731] hover:underline">
-              View All Content →
-            </Link>
-          </div>
-          {loadingContent ? (
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : content.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-gray-100 bg-white p-10 text-center">
-              <p className="font-bold text-[#171717]">No content published yet — be the first creator!</p>
-              <Link href="/publish" className="mt-4 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717]">
-                Publish Content
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {content.map((item) => <ContentCard key={item.id} item={item} />)}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── CREATOR SPOTLIGHT ── */}
-      <section className="bg-[#171717] py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="font-serif text-4xl font-black text-white">Meet Our Creators</h2>
-          <p className="mt-3 text-white/60">
-            Verified African creators earning royalties on every sale.
-          </p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {loadingCreators
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-36 animate-pulse rounded-2xl bg-white/10" />
-                ))
-              : creators.map((tutor) => (
-                  <Link
-                    key={tutor.id}
-                    href={`/tutor/${tutor.id}`}
-                    className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/5 p-5 transition hover:border-[#FFBF00]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFBF00] font-black text-[#171717]">
-                      {initials(tutor.profile?.full_name ?? "C")}
-                    </div>
-                    <div>
-                      <p className="font-bold text-white">{tutor.profile?.full_name ?? "Creator"}</p>
-                      <p className="mt-0.5 text-sm text-white/50">{tutor.specialty ?? "African Content"}</p>
-                    </div>
-                    <p className="text-sm font-bold text-[#FFBF00]">View Profile →</p>
-                  </Link>
-                ))}
-          </div>
-          <div className="mt-8">
-            <Link
-              href="/creators"
-              className="inline-flex rounded-full bg-[#FFBF00] px-8 py-3 font-bold text-[#171717] transition hover:bg-[#e6ac00]"
-            >
-              Find All Creators
-            </Link>
           </div>
         </div>
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="bg-[#fdf6e3] py-20">
+      <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="font-serif text-4xl font-black text-[#171717]">What learners say</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <h2 className="font-serif text-4xl font-black text-[#171717] text-center mb-12">What learners say</h2>
+          <div className="grid gap-6 md:grid-cols-3">
             {TESTIMONIALS.map((item) => (
-              <div key={item.name} className="rounded-2xl bg-white p-6">
-                <p className="text-6xl font-black leading-none text-[#FFBF00]">&ldquo;</p>
+              <div key={item.name} className="rounded-2xl border border-gray-100 bg-white p-6 transition-all hover:border-[#FFBF00] hover:shadow-lg hover:shadow-[#FFBF00]/10">
+                <p className="text-5xl font-black leading-none text-[#FFBF00]">&ldquo;</p>
                 <p className="mt-2 leading-relaxed text-gray-600">{item.quote}</p>
                 <div className="mt-6 flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a4731] text-sm font-bold text-white">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a4731] text-sm font-bold text-white flex-shrink-0">
                     {item.name[0]}
                   </div>
                   <div>
@@ -387,30 +435,36 @@ export function HomeClient() {
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="bg-[#1a4731] py-20 text-center">
-        <div className="mx-auto max-w-3xl px-6">
-          <h2 className="font-serif text-5xl font-black text-white">
+      <section className="relative bg-[#1a4731] py-24 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#FFBF00]/10 blur-[80px]" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-[#FFBF00]/5 blur-[60px]" />
+        </div>
+        <div className="relative z-10 text-center px-4">
+          <h2 className="font-serif text-4xl md:text-6xl font-black text-white max-w-3xl mx-auto leading-tight">
             Africa&apos;s culture deserves to be heard.
           </h2>
-          <p className="mt-4 text-xl text-white/70">
+          <p className="mt-6 text-lg text-white/60 max-w-xl mx-auto">
             Join thousands of creators and learners on LughaPro.
           </p>
-          {isConnected ? (
-            <Link
-              href="/explore"
-              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
-            >
-              Get Started ↗
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={login}
-              className="mt-8 inline-flex rounded-full bg-[#FFBF00] px-8 py-4 text-lg font-black text-[#171717] transition hover:bg-[#e6ac00]"
-            >
-              Get Started ↗
-            </button>
-          )}
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+            {isConnected ? (
+              <Link
+                href="/explore"
+                className="rounded-full bg-[#FFBF00] px-10 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition-all hover:scale-105"
+              >
+                Get Started ↗
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={login}
+                className="rounded-full bg-[#FFBF00] px-10 py-4 text-lg font-black text-[#171717] hover:bg-[#e6ac00] transition-all hover:scale-105"
+              >
+                Get Started ↗
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

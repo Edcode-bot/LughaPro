@@ -5,6 +5,7 @@ import { ChevronDown, Menu, Search, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { SearchOverlay } from "@/components/ui/SearchOverlay";
 import { initials } from "@/lib/content";
@@ -16,7 +17,15 @@ export function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
   const { isConnected, displayName, address, role, disconnect, login } = useAuth();
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const refresh = () => {
@@ -64,9 +73,20 @@ export function NavBar() {
 
   const dropdownLinks = role === "tutor" ? tutorMenu : studentMenu;
 
+  const isHomePage = pathname === "/";
+  const navBg = isHomePage
+    ? scrolled
+      ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100"
+      : "bg-transparent"
+    : "bg-white border-b border-gray-100";
+  const linkColor = isHomePage && !scrolled
+    ? "text-white hover:text-[#FFBF00]"
+    : "text-[#171717] hover:text-[#1a4731]";
+  const iconColor = isHomePage && !scrolled ? "text-white" : "text-[#1a4731]";
+
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-forest/10 bg-white shadow-sm">
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${navBg}`}>
         <nav className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-[72px] lg:px-8">
           <Link href="/" className="inline-flex shrink-0 items-center">
             <Image
@@ -81,7 +101,7 @@ export function NavBar() {
 
           <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
             {centerLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm font-semibold text-[#171717] hover:text-[#1a4731]">
+              <Link key={link.href} href={link.href} className={`text-sm font-semibold transition-colors ${linkColor}`}>
                 {link.label}
               </Link>
             ))}
@@ -92,7 +112,7 @@ export function NavBar() {
               type="button"
               aria-label="Search"
               onClick={() => setSearchOpen(true)}
-              className="min-h-11 min-w-11 rounded-full p-2 text-forest hover:bg-off-white"
+              className={`min-h-11 min-w-11 rounded-full p-2 transition-colors hover:bg-white/10 ${iconColor}`}
             >
               <Search className="h-5 w-5" />
             </button>
@@ -150,14 +170,14 @@ export function NavBar() {
                 <button
                   type="button"
                   onClick={() => login()}
-                  className="min-h-11 rounded-full px-4 py-2 text-sm font-semibold text-forest hover:bg-off-white"
+                  className={`min-h-11 rounded-full px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/10 ${linkColor}`}
                 >
                   Sign In
                 </button>
                 <button
                   type="button"
                   onClick={() => login()}
-                  className="min-h-11 rounded-full bg-gold px-5 py-2.5 text-sm font-bold text-foreground hover:bg-[#e6ac00]"
+                  className="min-h-11 rounded-full bg-[#FFBF00] px-5 py-2.5 text-sm font-bold text-[#171717] hover:bg-[#e6ac00] transition-colors"
                 >
                   Get Started
                 </button>
@@ -191,11 +211,11 @@ export function NavBar() {
             )}
             <button
               type="button"
-              className="min-h-11 min-w-11 rounded-full p-2"
+              className={`min-h-11 min-w-11 rounded-full p-2 transition-colors ${iconColor}`}
               onClick={() => setOpen(true)}
               aria-label="Open menu"
             >
-              <Menu className="h-6 w-6 text-forest" />
+              <Menu className="h-6 w-6" />
             </button>
           </div>
         </nav>
@@ -263,6 +283,9 @@ export function NavBar() {
       </div>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Spacer so fixed nav doesn't overlap content on non-homepage */}
+      {!isHomePage && <div className="h-16 lg:h-[72px]" />}
     </>
   );
 }

@@ -88,7 +88,7 @@ function ExploreContent() {
         </p>
 
         {/* Category tabs — sticky, horizontal scroll */}
-        <div className="sticky top-[64px] z-30 -mx-4 mt-6 overflow-x-auto bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6">
+        <div className="sticky top-[72px] z-30 -mx-4 mt-6 overflow-x-auto bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6">
           <div className="flex min-w-max gap-6 border-b border-gray-100">
             {CATEGORY_TABS.map((tab) => (
               <button
