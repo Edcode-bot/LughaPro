@@ -111,7 +111,7 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
           )}
           <div className="min-w-0">
             <div className="font-semibold text-white text-sm truncate">{displayName ?? "User"}</div>
-            <div className="text-white/40 text-xs truncate">
+            <div className="text-white/50 text-xs font-mono truncate">
               {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""}
             </div>
           </div>
@@ -130,8 +130,8 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
                 active
-                  ? "bg-[#FFBF00] text-[#171717]"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+                  ? "bg-[#FFBF00] text-[#171717] font-black"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
@@ -146,8 +146,8 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
             onClick={() => setSidebarOpen(false)}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
               pathname === "/admin"
-                ? "bg-[#FFBF00] text-[#171717]"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
+                ? "bg-[#FFBF00] text-[#171717] font-black"
+                : "text-white/80 hover:bg-white/10 hover:text-white"
             }`}
           >
             <Shield className="h-5 w-5 flex-shrink-0" />
@@ -196,8 +196,8 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
 
       {/* Main content */}
       <main className="lg:ml-64 min-h-screen flex flex-col">
-        {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 py-4 lg:px-8 flex items-center justify-between shadow-sm">
+        {/* Top bar — solid white so text is always readable */}
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm px-5 py-4 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -212,9 +212,9 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
             <NotificationBell />
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="avatar" className="h-9 w-9 rounded-full object-cover" />
+              <img src={avatarUrl} alt="avatar" className="h-9 w-9 rounded-full object-cover border-2 border-[#FFBF00]" />
             ) : (
-              <div className="h-9 w-9 rounded-full bg-[#1a4731] flex items-center justify-center text-white text-sm font-bold">
+              <div className="h-9 w-9 rounded-full bg-[#1a4731] flex items-center justify-center text-white text-sm font-black">
                 {(displayName ?? "U").slice(0, 2).toUpperCase()}
               </div>
             )}

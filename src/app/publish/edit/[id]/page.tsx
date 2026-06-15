@@ -1,27 +1,24 @@
 'use client'
 
-import { FormEvent, Suspense, useEffect, useState } from 'react'
+import { ChangeEvent, FormEvent, Suspense, useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
-
-function getWalletAddress(): string | null {
-  try {
-    const raw = localStorage.getItem('lugha_profile')
-    if (!raw) return null
-    return (JSON.parse(raw) as { wallet_address?: string }).wallet_address ?? null
-  } catch { return null }
-}
+import { useAuth } from '@/hooks/useAuth'
 
 function EditForm({ id, type }: { id: string; type: string }) {
   const router = useRouter()
+  const { address } = useAuth()
+
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [price, setPrice] = useState('0')
   const [isPremium, setIsPremium] = useState(false)
   const [tags, setTags] = useState('')
+  const [currentCoverUrl, setCurrentCoverUrl] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +27,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
   useEffect(() => {
     fetch(`/api/content/${id}?type=${type}`)
       .then((r) => r.json())
-      .then((d: { data?: { title?: string; content?: string; description?: string; price?: number; is_free?: boolean; tags?: string[] } }) => {
+      .then((d: { data?: { title?: string; content?: string; description?: string; price?: number; is_free?: boolean; tags?: string[]; cover_image_url?: string | null } }) => {
         const data = d.data
         if (!data) return
         setTitle(data.title ?? '')
@@ -38,20 +35,46 @@ function EditForm({ id, type }: { id: string; type: string }) {
         setPrice(String(data.price ?? 0))
         setIsPremium(!data.is_free)
         setTags((data.tags ?? []).join(', '))
+        setCurrentCoverUrl(data.cover_image_url ?? null)
       })
       .finally(() => setLoading(false))
   }, [id, type])
 
+  async function handleCoverUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !address) return
+    setUploadingCover(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload/cover', {
+        method: 'POST',
+        headers: { 'x-wallet-address': address },
+        body: formData,
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) {
+        setCurrentCoverUrl(data.url)
+      } else {
+        alert(data.error ?? 'Image upload failed')
+      }
+    } catch {
+      alert('Image upload failed')
+    } finally {
+      setUploadingCover(false)
+      e.target.value = ''
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    const wallet = getWalletAddress()
-    if (!wallet) { setError('Wallet not found. Please reconnect.'); return }
+    if (!address) { setError('Wallet not found. Please reconnect.'); return }
     setSubmitting(true)
     try {
       const res = await fetch(`/api/content/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
         body: JSON.stringify({
           type,
           title,
@@ -60,6 +83,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
           price,
           is_premium: isPremium,
           tags,
+          cover_image_url: currentCoverUrl,
         }),
       })
       const result = await res.json() as { success?: boolean; error?: string }
@@ -76,10 +100,12 @@ function EditForm({ id, type }: { id: string; type: string }) {
   if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-white" />
 
   const isPost = type === 'post'
+  const isBook = type === 'book'
+  const showCoverUpload = isPost || isBook
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1)
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="max-w-2xl space-y-5">
+    <form onSubmit={(e) => void handleSubmit(e)} className="max-w-2xl">
       <div className="rounded-2xl bg-white border border-gray-100 p-6 space-y-5">
         <h2 className="font-serif text-2xl font-black text-[#1a4731]">Edit {typeLabel}</h2>
 
@@ -92,6 +118,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
           <div className="rounded-xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-800">{error}</div>
         )}
 
+        {/* Title */}
         <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
           Title *
           <input
@@ -102,6 +129,53 @@ function EditForm({ id, type }: { id: string; type: string }) {
           />
         </label>
 
+        {/* Cover image */}
+        {showCoverUpload && (
+          <div>
+            <div className="text-sm font-semibold text-[#1a4731] mb-2">Cover Image</div>
+
+            {currentCoverUrl ? (
+              <div className="relative rounded-xl overflow-hidden h-40 bg-gray-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={currentCoverUrl} alt="cover" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setCurrentCoverUrl(null)}
+                  className="absolute top-2 right-2 rounded-full bg-black/50 px-3 py-1 text-xs text-white hover:bg-black/70 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="cover-upload-edit"
+                  className="hidden"
+                  onChange={(e) => void handleCoverUpload(e)}
+                  disabled={uploadingCover}
+                />
+                <label
+                  htmlFor="cover-upload-edit"
+                  className="flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-6 cursor-pointer hover:border-[#FFBF00] transition-colors"
+                >
+                  <span className="text-2xl">🖼️</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[#171717]">Upload cover image</div>
+                    <div className="text-xs text-gray-400 mt-0.5">PNG, JPG up to 10MB</div>
+                  </div>
+                </label>
+              </div>
+            )}
+
+            {uploadingCover && (
+              <div className="mt-2 text-sm text-[#1a4731] font-semibold animate-pulse">Uploading image…</div>
+            )}
+          </div>
+        )}
+
+        {/* Body / Description */}
         <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
           {isPost ? 'Content *' : 'Description'}
           <textarea
@@ -112,6 +186,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
           />
         </label>
 
+        {/* Paid toggle (posts only) */}
         {isPost && (
           <label className="flex items-center gap-2 text-sm font-semibold text-[#1a4731]">
             <input
@@ -123,6 +198,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
           </label>
         )}
 
+        {/* Price */}
         {(isPremium || !isPost) && (
           <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
             Price (USD equivalent)
@@ -137,6 +213,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
           </label>
         )}
 
+        {/* Tags */}
         <label className="grid gap-2 text-sm font-semibold text-[#1a4731]">
           Tags (comma separated)
           <input
@@ -149,7 +226,7 @@ function EditForm({ id, type }: { id: string; type: string }) {
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || uploadingCover}
             className="flex-1 rounded-full bg-[#FFBF00] py-3 font-black text-[#171717] hover:bg-[#e6ac00] transition-colors disabled:opacity-50 text-sm"
           >
             {submitting ? 'Saving…' : 'Save Changes'}

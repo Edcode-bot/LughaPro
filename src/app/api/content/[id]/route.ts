@@ -162,8 +162,9 @@ export async function PATCH(
     is_premium?: boolean
     tags?: string
     type?: string
+    cover_image_url?: string | null
   }
-  const { title, content: postContent, description, price, is_premium, tags, type } = body
+  const { title, content: postContent, description, price, is_premium, tags, type, cover_image_url } = body
   const parsedPrice = parseFloat(String(price ?? '0'))
   const parsedTags = tags ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
 
@@ -172,14 +173,14 @@ export async function PATCH(
   if (type === 'post') {
     const res = await supabase
       .from('posts')
-      .update({ title, content: postContent, price: parsedPrice, is_premium: !!is_premium, tags: parsedTags })
+      .update({ title, content: postContent, price: parsedPrice, is_premium: !!is_premium, tags: parsedTags, cover_image_url: cover_image_url ?? null })
       .eq('id', id)
       .eq('author_id', profile.id)
     error = res.error
   } else if (type === 'book') {
     const res = await supabase
       .from('books')
-      .update({ title, description: description ?? postContent, price: parsedPrice })
+      .update({ title, description: description ?? postContent, price: parsedPrice, cover_image_url: cover_image_url ?? null })
       .eq('id', id)
       .eq('tutor_id', profile.id)
     error = res.error
