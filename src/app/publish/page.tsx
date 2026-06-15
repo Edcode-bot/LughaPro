@@ -5,6 +5,7 @@ import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FadeIn } from '@/components/ui/FadeIn'
+import { useAuth } from '@/hooks/useAuth'
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'All'] as const
 const CONTENT_CATEGORIES = ['language', 'music', 'arts', 'literature', 'video', 'other'] as const
@@ -62,6 +63,7 @@ const CARDS: { type: ContentType; emoji: string; title: string; desc: string }[]
 ]
 
 function PublishClient() {
+  const { address } = useAuth()
   const [active, setActive] = useState<ContentType | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
@@ -71,15 +73,24 @@ function PublishClient() {
   const [bookCoverPreview, setBookCoverPreview] = useState('')
   const [bookFile, setBookFile] = useState<File | null>(null)
   const [bookFileMode, setBookFileMode] = useState<'upload' | 'url'>('upload')
-  const [postCoverFile, setPostCoverFile] = useState<File | null>(null)
-  const [postCoverPreview, setPostCoverPreview] = useState('')
   const [videoThumbFile, setVideoThumbFile] = useState<File | null>(null)
   const [videoThumbPreview, setVideoThumbPreview] = useState('')
   const [musicCoverFile, setMusicCoverFile] = useState<File | null>(null)
   const [musicCoverPreview, setMusicCoverPreview] = useState('')
 
+  // Post-specific state
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [inlineImages, setInlineImages] = useState<string[]>([])
+  const [uploadingInlineImage, setUploadingInlineImage] = useState(false)
+  const [postTitle, setPostTitle] = useState('')
+  const [postContent, setPostContent] = useState('')
+  const [postTags, setPostTags] = useState('')
+  const [isPremium, setIsPremium] = useState(false)
+  const [postPrice, setPostPrice] = useState('0')
+  const [publishingPost, setPublishingPost] = useState(false)
+
   const [book, setBook] = useState({ title: '', description: '', level: 'All', price: 0, isFree: true, file_url: '', tags: '' })
-  const [post, setPost] = useState({ title: '', content: '', is_premium: false, price: 0, tags: '' })
   const [video, setVideo] = useState({ title: '', description: '', video_url: '', price: 0, category: 'language', level: 'N/A', tags: '' })
   const [music, setMusic] = useState({ title: '', description: '', audio_url: '', genre: '', instrument: '', price: 0, tags: '' })
 
@@ -89,12 +100,54 @@ function PublishClient() {
     setError(null)
   }
 
-  function onImagePick(event: ChangeEvent<HTMLInputElement>, target: 'book' | 'post') {
+  function onImagePick(event: ChangeEvent<HTMLInputElement>, target: 'book') {
     const file = event.target.files?.[0]
     if (!file) return
     const preview = URL.createObjectURL(file)
     if (target === 'book') { setBookCoverFile(file); setBookCoverPreview(preview) }
-    else { setPostCoverFile(file); setPostCoverPreview(preview) }
+  }
+
+  const handlePublishPost = async () => {
+    if (!postTitle.trim() || !postContent.trim() || !address) return
+    setPublishingPost(true)
+    try {
+      let coverImageUrl: string | null = null
+      if (coverFile) {
+        const formData = new FormData()
+        formData.append('file', coverFile)
+        const res = await fetch('/api/upload/cover', {
+          method: 'POST',
+          headers: { 'x-wallet-address': address },
+          body: formData,
+        })
+        const data = await res.json() as { url?: string }
+        coverImageUrl = data.url ?? null
+      }
+      const res = await fetch('/api/content/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address, 'x-lugha-role': 'tutor' },
+        body: JSON.stringify({
+          title: postTitle,
+          content: postContent,
+          cover_image_url: coverImageUrl,
+          is_premium: isPremium,
+          price: isPremium ? parseFloat(postPrice) : 0,
+          tags: postTags,
+          images: inlineImages,
+        }),
+      })
+      const data = await res.json() as { error?: string }
+      if (data.error) throw new Error(data.error)
+      setSuccess('Article published! 🎉')
+      setPostTitle(''); setPostContent(''); setPostTags('')
+      setIsPremium(false); setPostPrice('0')
+      setCoverPreview(null); setCoverFile(null); setInlineImages([])
+      setActive(null)
+    } catch (err: unknown) {
+      setError('Failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setPublishingPost(false)
+    }
   }
 
   async function publishBook(event: FormEvent) {
@@ -120,29 +173,6 @@ function PublishClient() {
       setBook({ title: '', description: '', level: 'All', price: 0, isFree: true, file_url: '', tags: '' })
       setBookCoverFile(null); setBookCoverPreview(''); setBookFile(null); setBookFileMode('upload')
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to publish book') }
-    finally { setSubmitting(false) }
-  }
-
-  async function publishPost(event: FormEvent) {
-    event.preventDefault(); setSuccess(null); setError(null)
-    if (!post.title.trim() || !post.content.trim()) { setError('Title and content are required.'); return }
-    const wallet = getWalletAddress()
-    if (!wallet) { setError('Wallet not found.'); return }
-    setSubmitting(true)
-    try {
-      let cover_image_url: string | undefined
-      if (postCoverFile) cover_image_url = await uploadFile(postCoverFile, 'covers', wallet)
-      const res = await fetch('/api/content/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet, 'x-lugha-role': 'tutor' },
-        body: JSON.stringify({ title: post.title.trim(), content: post.content.trim(), cover_image_url, is_premium: post.is_premium, price: post.is_premium ? Number(post.price) : 0, tags: post.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
-      })
-      const result = await res.json()
-      if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish post')
-      setSuccess('Post published successfully! 🎉')
-      setPost({ title: '', content: '', is_premium: false, price: 0, tags: '' })
-      setPostCoverFile(null); setPostCoverPreview('')
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to publish post') }
     finally { setSubmitting(false) }
   }
 
@@ -278,28 +308,137 @@ function PublishClient() {
 
           {/* ── POST FORM ── */}
           {active === 'post' && (
-            <form onSubmit={(e) => void publishPost(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl border-2 border-[#FFBF00] bg-white p-6 shadow-sm">
-              <h2 className="font-serif text-2xl font-black text-[#1a4731]">Write an Article</h2>
-              <Field label="Title *" value={post.title} onChange={(v) => setPost({ ...post, title: v })} required />
-              <label className="grid gap-2 text-sm font-semibold text-forest">
-                Content *
-                <textarea required value={post.content} onChange={(e) => setPost({ ...post, content: e.target.value })} style={{ minHeight: 200 }} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
-              </label>
-              <label className="grid gap-2 text-sm font-semibold text-forest">Cover image <input type="file" accept="image/*" onChange={(e) => onImagePick(e, 'post')} /></label>
-              {postCoverPreview ? <CoverPreview src={postCoverPreview} /> : null}
-              <label className="flex items-center gap-2 text-sm font-semibold text-forest">
-                <input type="checkbox" checked={post.is_premium} onChange={(e) => setPost({ ...post, is_premium: e.target.checked })} />
-                Paid content
-              </label>
-              {post.is_premium && (
-                <label className="grid gap-2 text-sm font-semibold text-forest">
-                  Price (USD equivalent)
-                  <input type="number" min={0} step="0.01" value={post.price} onChange={(e) => setPost({ ...post, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
+            <div className="mt-6 rounded-2xl bg-white border-2 border-[#FFBF00] p-6 md:p-8 max-w-2xl shadow-sm">
+              <h2 className="font-serif text-2xl font-black text-[#171717] mb-6">Write an Article</h2>
+
+              {/* Cover Image */}
+              <div className="mb-6">
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Cover Image</label>
+                {coverPreview ? (
+                  <div className="relative rounded-xl overflow-hidden h-48 bg-gray-100 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={coverPreview} className="h-full w-full object-cover" alt="cover" />
+                    <button type="button" onClick={() => { setCoverPreview(null); setCoverFile(null) }}
+                      className="absolute top-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      Remove ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input type="file" accept="image/*" id="cover-img" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)) }
+                      }} />
+                    <label htmlFor="cover-img"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-8 cursor-pointer hover:border-[#FFBF00] hover:bg-[#fdf6e3] transition-all">
+                      <span className="text-3xl">🖼️</span>
+                      <span className="text-sm font-semibold text-gray-600">Click to add cover image</span>
+                      <span className="text-xs text-gray-400">PNG, JPG, WebP — max 10MB</span>
+                    </label>
+                  </>
+                )}
+              </div>
+
+              {/* Title */}
+              <div className="mb-4">
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Title *</label>
+                <input type="text" required value={postTitle} onChange={e => setPostTitle(e.target.value)}
+                  placeholder="Give your article a compelling title..."
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-[#171717] placeholder-gray-400 focus:border-[#FFBF00] focus:outline-none text-lg font-semibold" />
+              </div>
+
+              {/* Content with inline image insertion */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-[#171717]">Content *</label>
+                  <button type="button" onClick={() => document.getElementById('inline-img')?.click()}
+                    className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:border-[#FFBF00] hover:text-[#1a4731] transition-all">
+                    🖼️ Insert Image
+                  </button>
+                </div>
+                <input type="file" accept="image/*" id="inline-img" className="hidden"
+                  onChange={async e => {
+                    const f = e.target.files?.[0]
+                    if (!f || !address) return
+                    setUploadingInlineImage(true)
+                    const formData = new FormData()
+                    formData.append('file', f)
+                    try {
+                      const res = await fetch('/api/upload/cover', {
+                        method: 'POST',
+                        headers: { 'x-wallet-address': address },
+                        body: formData,
+                      })
+                      const data = await res.json() as { url?: string }
+                      if (data.url) {
+                        const imgMarkdown = `\n\n![image](${data.url})\n\n`
+                        setPostContent(prev => prev + imgMarkdown)
+                        setInlineImages(prev => [...prev, data.url!])
+                      }
+                    } finally {
+                      setUploadingInlineImage(false)
+                      e.target.value = ''
+                    }
+                  }} />
+                <textarea required value={postContent} onChange={e => setPostContent(e.target.value)}
+                  placeholder="Write your article here... Use the 'Insert Image' button to add images inline."
+                  rows={14}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-[#171717] placeholder-gray-400 focus:border-[#FFBF00] focus:outline-none resize-none font-mono text-sm leading-relaxed" />
+                {uploadingInlineImage && (
+                  <div className="mt-2 text-sm text-[#1a4731] font-semibold animate-pulse flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 rounded-full bg-[#1a4731] animate-bounce" />
+                    Uploading image...
+                  </div>
+                )}
+                {inlineImages.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Embedded images ({inlineImages.length}):</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {inlineImages.map((url, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt={`inline ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-gray-200" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-400">
+                  Tip: Images are embedded using ![image](url) markdown and will display in your article.
+                </p>
+              </div>
+
+              {/* Paid toggle + price */}
+              <div className="mb-4 flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className={`relative w-11 h-6 rounded-full transition-colors ${isPremium ? 'bg-[#1a4731]' : 'bg-gray-200'}`}
+                    onClick={() => setIsPremium(!isPremium)}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${isPremium ? 'left-6' : 'left-1'}`} />
+                  </div>
+                  <span className="text-sm font-semibold text-[#171717]">Paid content</span>
                 </label>
-              )}
-              <Field label="Tags (comma separated)" value={post.tags} onChange={(v) => setPost({ ...post, tags: v })} />
-              <SubmitBtn submitting={submitting} label="Publish Post" />
-            </form>
+                {isPremium && (
+                  <input type="number" min="0.01" step="0.01" value={postPrice}
+                    onChange={e => setPostPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                )}
+                {isPremium && <span className="text-xs text-gray-400">Buyers pay in cUSD, CELO, or USDT</span>}
+              </div>
+
+              {/* Tags */}
+              <div className="mb-6">
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Tags</label>
+                <input type="text" value={postTags} onChange={e => setPostTags(e.target.value)}
+                  placeholder="kiswahili, culture, history (comma separated)"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none" />
+              </div>
+
+              {/* Submit */}
+              <button type="button" onClick={() => void handlePublishPost()} disabled={publishingPost || uploadingInlineImage || !postTitle.trim() || !postContent.trim()}
+                className="w-full rounded-full bg-[#FFBF00] py-4 font-black text-[#171717] text-lg hover:bg-[#e6ac00] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                {publishingPost ? 'Publishing...' : 'Publish Article →'}
+              </button>
+            </div>
           )}
 
           {/* ── VIDEO FORM ── */}

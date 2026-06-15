@@ -94,13 +94,13 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
         <Image src="/logo.png" alt="LughaPro" width={36} height={36} className="h-9 w-9 rounded-lg object-contain" />
         <div>
           <div className="font-serif font-black text-white text-lg leading-none">LughaPro</div>
-          <div className="text-white/40 text-xs mt-0.5">Learn. Discover. Preserve.</div>
+          <div className="text-[#FFBF00]/70 text-xs mt-0.5">Learn. Discover. Preserve.</div>
         </div>
       </div>
 
       {/* User card */}
       <div className="px-4 py-4 border-b border-white/10">
-        <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-white/20 p-3 border border-white/20">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
@@ -111,7 +111,7 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
           )}
           <div className="min-w-0">
             <div className="font-semibold text-white text-sm truncate">{displayName ?? "User"}</div>
-            <div className="text-white/50 text-xs font-mono truncate">
+            <div className="text-white/70 text-xs font-mono truncate">
               {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""}
             </div>
           </div>
@@ -130,8 +130,8 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
                 active
-                  ? "bg-[#FFBF00] text-[#171717] font-black"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
+                  ? "bg-[#FFBF00] text-[#171717] font-black shadow-lg"
+                  : "text-white/90 hover:bg-white/15 hover:text-white font-medium"
               }`}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
@@ -146,8 +146,8 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
             onClick={() => setSidebarOpen(false)}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
               pathname === "/admin"
-                ? "bg-[#FFBF00] text-[#171717] font-black"
-                : "text-white/80 hover:bg-white/10 hover:text-white"
+                ? "bg-[#FFBF00] text-[#171717] font-black shadow-lg"
+                : "text-white/90 hover:bg-white/15 hover:text-white font-medium"
             }`}
           >
             <Shield className="h-5 w-5 flex-shrink-0" />
@@ -161,7 +161,7 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
         <button
           type="button"
           onClick={() => disconnect()}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/50 hover:bg-red-500/10 hover:text-red-400 transition-all"
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/70 hover:bg-red-500/10 hover:text-red-400 transition-all"
         >
           <LogOut className="h-5 w-5" />
           Disconnect
@@ -194,25 +194,26 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
         </div>
       )}
 
+      {/* Mobile hamburger — fixed overlay button */}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 rounded-xl bg-[#1a4731] p-2.5 shadow-lg"
+        aria-label="Open sidebar"
+      >
+        <Menu className="h-5 w-5 text-white" />
+      </button>
+
       {/* Main content */}
       <main className="lg:ml-64 min-h-screen flex flex-col">
-        {/* Top bar — solid white so text is always readable */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm px-5 py-4 lg:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-[#171717]"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <h1 className="font-serif text-xl font-black text-[#171717] lg:text-2xl">{pageTitle}</h1>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* Top bar — solid white */}
+        <div className="sticky top-0 z-30 bg-white shadow-sm border-b-2 border-gray-100 px-6 md:px-8 py-4 flex items-center justify-between">
+          <h1 className="font-serif text-xl md:text-2xl font-black text-[#171717] pl-10 lg:pl-0">{pageTitle}</h1>
+          <div className="flex items-center gap-2 md:gap-3">
             <NotificationBell />
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="avatar" className="h-9 w-9 rounded-full object-cover border-2 border-[#FFBF00]" />
+              <img src={avatarUrl} alt="avatar" className="h-9 w-9 rounded-full object-cover ring-2 ring-[#FFBF00]" />
             ) : (
               <div className="h-9 w-9 rounded-full bg-[#1a4731] flex items-center justify-center text-white text-sm font-black">
                 {(displayName ?? "U").slice(0, 2).toUpperCase()}

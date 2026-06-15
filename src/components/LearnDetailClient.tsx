@@ -23,6 +23,19 @@ type CheckResponse = {
   purchased_at: string | null
 };
 
+/** Render markdown images ![alt](url) as <img> elements, rest as text */
+function renderContent(content: string) {
+  const parts = content.split(/(\!\[.*?\]\(.*?\))/g)
+  return parts.map((part, i) => {
+    const imgMatch = part.match(/\!\[(.*?)\]\((.*?)\)/)
+    if (imgMatch) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img key={i} src={imgMatch[2]} alt={imgMatch[1]} className="my-4 w-full rounded-xl object-cover max-h-96" />
+    }
+    return <span key={i} className="whitespace-pre-wrap">{part}</span>
+  })
+}
+
 /** First N sentences of a string */
 function excerpt(text: string, sentences = 2) {
   const parts = text.match(/[^.!?]+[.!?]+/g) ?? []
@@ -316,7 +329,7 @@ export function LearnDetailClient({ id }: { id: string }) {
 
               {item.type === "post" && item.content ? (
                 <article className="prose prose-forest max-w-none rounded-2xl bg-white p-6 shadow-sm">
-                  <div className="whitespace-pre-wrap leading-relaxed text-foreground/85">{item.content}</div>
+                  <div className="leading-relaxed text-foreground/85">{renderContent(item.content)}</div>
                 </article>
               ) : null}
 

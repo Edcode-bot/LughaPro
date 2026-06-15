@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       price?: number
       tags?: string[]
       language?: string
+      images?: string[]
     }
 
     if (!body.title?.trim() || !body.content?.trim()) {
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
         tags: body.tags ?? [],
         language: body.language ?? 'Kiswahili',
         published: true,
+        images: body.images ?? [],
       })
       .select('*')
       .single()
