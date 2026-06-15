@@ -46,6 +46,7 @@ export function NavBar() {
   const publicLinks = [
     { label: "Explore", href: "/explore" },
     { label: "Creators", href: "/creators" },
+    { label: "Leaderboard", href: "/leaderboard" },
     { label: "About", href: "/about" },
   ];
 
@@ -53,6 +54,7 @@ export function NavBar() {
     { label: "Explore", href: "/explore" },
     { label: "My Library", href: "/library" },
     { label: "Creators", href: "/creators" },
+    { label: "Leaderboard", href: "/leaderboard" },
   ];
 
   const centerLinks = isConnected ? connectedLinks : publicLinks;

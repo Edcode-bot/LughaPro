@@ -138,6 +138,107 @@ async function tryMusic(supabase: ReturnType<typeof serviceClient>, id: string) 
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const wallet = request.headers.get('x-wallet-address')
+  if (!wallet) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = serviceClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('wallet_address', wallet.toLowerCase())
+    .maybeSingle()
+  if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json() as {
+    title?: string
+    content?: string
+    description?: string
+    price?: string | number
+    is_premium?: boolean
+    tags?: string
+    type?: string
+  }
+  const { title, content: postContent, description, price, is_premium, tags, type } = body
+  const parsedPrice = parseFloat(String(price ?? '0'))
+  const parsedTags = tags ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
+
+  let error: { message: string } | null = null
+
+  if (type === 'post') {
+    const res = await supabase
+      .from('posts')
+      .update({ title, content: postContent, price: parsedPrice, is_premium: !!is_premium, tags: parsedTags })
+      .eq('id', id)
+      .eq('author_id', profile.id)
+    error = res.error
+  } else if (type === 'book') {
+    const res = await supabase
+      .from('books')
+      .update({ title, description: description ?? postContent, price: parsedPrice })
+      .eq('id', id)
+      .eq('tutor_id', profile.id)
+    error = res.error
+  } else if (type === 'video') {
+    const res = await supabase
+      .from('videos')
+      .update({ title, description: description ?? postContent, price: parsedPrice })
+      .eq('id', id)
+      .eq('creator_id', profile.id)
+    error = res.error
+  } else if (type === 'music') {
+    const res = await supabase
+      .from('music')
+      .update({ title, description: description ?? postContent, price: parsedPrice })
+      .eq('id', id)
+      .eq('creator_id', profile.id)
+    error = res.error
+  } else {
+    return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+  }
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const wallet = request.headers.get('x-wallet-address')
+  if (!wallet) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = serviceClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('wallet_address', wallet.toLowerCase())
+    .maybeSingle()
+  if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let body: { type?: string } = {}
+  try { body = await request.json() as { type?: string } } catch { /* no body */ }
+  const { type } = body
+
+  const tableMap: Record<string, { table: string; ownerCol: string }> = {
+    post: { table: 'posts', ownerCol: 'author_id' },
+    book: { table: 'books', ownerCol: 'tutor_id' },
+    video: { table: 'videos', ownerCol: 'creator_id' },
+    music: { table: 'music', ownerCol: 'creator_id' },
+  }
+
+  const t = type ? tableMap[type] : null
+  if (!t) return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+
+  await supabase.from(t.table).delete().eq('id', id).eq(t.ownerCol, profile.id)
+  return NextResponse.json({ success: true })
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
