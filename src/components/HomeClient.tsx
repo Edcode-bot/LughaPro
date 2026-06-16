@@ -145,9 +145,6 @@ export function HomeClient() {
 
       {/* ── HERO ── */}
       <section className="relative min-h-screen bg-[#171717] flex flex-col items-center justify-center overflow-hidden">
-        {/* Navbar gradient helper — ensures nav links visible against dark hero */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/40 to-transparent pointer-events-none z-10" />
-
         {/* Ambient glows */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-[#FFBF00]/10 blur-[120px]" />

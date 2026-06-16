@@ -22,7 +22,8 @@ export function NavBar() {
   const { isConnected, displayName, address, role, disconnect, login } = useAuth();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 60);
+    const handleScroll = () => setScrolled(window.scrollY > 40);
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -79,7 +80,7 @@ export function NavBar() {
   const navBg = isHomePage
     ? scrolled
       ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100"
-      : "bg-transparent"
+      : "bg-gradient-to-b from-black/50 via-black/20 to-transparent"
     : "bg-white border-b border-gray-100";
   const linkColor = isHomePage && !scrolled
     ? "text-white hover:text-[#FFBF00]"

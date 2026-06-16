@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, FormEvent, Suspense, useState } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
@@ -11,14 +11,6 @@ const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'All'] as const
 const CONTENT_CATEGORIES = ['language', 'music', 'arts', 'literature', 'video', 'other'] as const
 
 type ContentType = 'book' | 'post' | 'video' | 'music'
-
-function CoverPreview({ src }: { src: string }) {
-  return (
-    <div className="relative mt-2 w-full overflow-hidden rounded-xl" style={{ aspectRatio: '16/9' }}>
-      <img src={src} alt="Cover preview" className="h-full w-full object-cover" />
-    </div>
-  )
-}
 
 async function uploadFile(file: File, bucket: string, wallet: string): Promise<string> {
   const formData = new FormData()
@@ -90,21 +82,20 @@ function PublishClient() {
   const [postPrice, setPostPrice] = useState('0')
   const [publishingPost, setPublishingPost] = useState(false)
 
-  const [book, setBook] = useState({ title: '', description: '', level: 'All', price: 0, isFree: true, file_url: '', tags: '' })
-  const [video, setVideo] = useState({ title: '', description: '', video_url: '', price: 0, category: 'language', level: 'N/A', tags: '' })
-  const [music, setMusic] = useState({ title: '', description: '', audio_url: '', genre: '', instrument: '', price: 0, tags: '' })
+  const [book, setBook] = useState({ title: '', description: '', level: 'All', file_url: '', tags: '' })
+  const [bookIsFree, setBookIsFree] = useState(true)
+  const [bookPrice, setBookPrice] = useState('0')
+  const [video, setVideo] = useState({ title: '', description: '', video_url: '', category: 'language', level: 'N/A', tags: '' })
+  const [videoIsPaid, setVideoIsPaid] = useState(false)
+  const [videoPrice, setVideoPrice] = useState('0')
+  const [music, setMusic] = useState({ title: '', description: '', audio_url: '', genre: '', instrument: '', tags: '' })
+  const [musicIsPaid, setMusicIsPaid] = useState(false)
+  const [musicPrice, setMusicPrice] = useState('0')
 
   function pickCard(type: ContentType) {
     setActive((prev) => (prev === type ? null : type))
     setSuccess(null)
     setError(null)
-  }
-
-  function onImagePick(event: ChangeEvent<HTMLInputElement>, target: 'book') {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const preview = URL.createObjectURL(file)
-    if (target === 'book') { setBookCoverFile(file); setBookCoverPreview(preview) }
   }
 
   const handlePublishPost = async () => {
@@ -153,25 +144,32 @@ function PublishClient() {
   async function publishBook(event: FormEvent) {
     event.preventDefault(); setSuccess(null); setError(null)
     if (!book.title.trim() || !book.description.trim()) { setError('Title and description are required.'); return }
-    const wallet = getWalletAddress()
-    if (!wallet) { setError('Wallet not found. Please connect your wallet again.'); return }
+    if (!address) { setError('Wallet not found. Please connect your wallet again.'); return }
     setSubmitting(true)
     try {
       let cover_image_url: string | undefined
-      if (bookCoverFile) cover_image_url = await uploadFile(bookCoverFile, 'covers', wallet)
+      if (bookCoverFile) {
+        const formData = new FormData()
+        formData.append('file', bookCoverFile)
+        const res = await fetch('/api/upload/cover', { method: 'POST', headers: { 'x-wallet-address': address }, body: formData })
+        const data = await res.json() as { url?: string }
+        cover_image_url = data.url
+      }
       let file_url = book.file_url.trim() || undefined
-      if (bookFileMode === 'upload' && bookFile) file_url = await uploadFile(bookFile, 'books', wallet)
-      const price = book.isFree ? 0 : Number(book.price)
+      if (bookFileMode === 'upload' && bookFile) file_url = await uploadFile(bookFile, 'books', address)
+      const price = bookIsFree ? 0 : parseFloat(bookPrice)
       const res = await fetch('/api/content/books', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet, 'x-lugha-role': 'tutor' },
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address, 'x-lugha-role': 'tutor' },
         body: JSON.stringify({ title: book.title.trim(), description: book.description.trim(), level: book.level, price, cover_image_url, file_url, tags: book.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
       })
       const result = await res.json()
       if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish book')
       setSuccess('Book published successfully! 🎉')
-      setBook({ title: '', description: '', level: 'All', price: 0, isFree: true, file_url: '', tags: '' })
+      setBook({ title: '', description: '', level: 'All', file_url: '', tags: '' })
+      setBookIsFree(true); setBookPrice('0')
       setBookCoverFile(null); setBookCoverPreview(''); setBookFile(null); setBookFileMode('upload')
+      setActive(null)
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to publish book') }
     finally { setSubmitting(false) }
   }
@@ -179,22 +177,29 @@ function PublishClient() {
   async function publishVideo(event: FormEvent) {
     event.preventDefault(); setSuccess(null); setError(null)
     if (!video.title.trim()) { setError('Title is required.'); return }
-    const wallet = getWalletAddress()
-    if (!wallet) { setError('Wallet not found.'); return }
+    if (!address) { setError('Wallet not found.'); return }
     setSubmitting(true)
     try {
       let thumbnail_url: string | null = null
-      if (videoThumbFile) thumbnail_url = await uploadFile(videoThumbFile, 'covers', wallet)
+      if (videoThumbFile) {
+        const formData = new FormData()
+        formData.append('file', videoThumbFile)
+        const res = await fetch('/api/upload/cover', { method: 'POST', headers: { 'x-wallet-address': address }, body: formData })
+        const data = await res.json() as { url?: string }
+        thumbnail_url = data.url ?? null
+      }
       const res = await fetch('/api/content/videos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
-        body: JSON.stringify({ title: video.title.trim(), description: video.description.trim() || null, video_url: video.video_url.trim() || null, thumbnail_url, price: Number(video.price), category: video.category, level: video.level, tags: video.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+        body: JSON.stringify({ title: video.title.trim(), description: video.description.trim() || null, video_url: video.video_url.trim() || null, thumbnail_url, price: videoIsPaid ? parseFloat(videoPrice) : 0, category: video.category, level: video.level, tags: video.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
       })
       const result = await res.json()
       if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish video')
       setSuccess('Video published! 🎉')
-      setVideo({ title: '', description: '', video_url: '', price: 0, category: 'language', level: 'N/A', tags: '' })
+      setVideo({ title: '', description: '', video_url: '', category: 'language', level: 'N/A', tags: '' })
+      setVideoIsPaid(false); setVideoPrice('0')
       setVideoThumbFile(null); setVideoThumbPreview('')
+      setActive(null)
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to publish video') }
     finally { setSubmitting(false) }
   }
@@ -202,22 +207,29 @@ function PublishClient() {
   async function publishMusic(event: FormEvent) {
     event.preventDefault(); setSuccess(null); setError(null)
     if (!music.title.trim()) { setError('Title is required.'); return }
-    const wallet = getWalletAddress()
-    if (!wallet) { setError('Wallet not found.'); return }
+    if (!address) { setError('Wallet not found.'); return }
     setSubmitting(true)
     try {
       let cover_image_url: string | null = null
-      if (musicCoverFile) cover_image_url = await uploadFile(musicCoverFile, 'covers', wallet)
+      if (musicCoverFile) {
+        const formData = new FormData()
+        formData.append('file', musicCoverFile)
+        const res = await fetch('/api/upload/cover', { method: 'POST', headers: { 'x-wallet-address': address }, body: formData })
+        const data = await res.json() as { url?: string }
+        cover_image_url = data.url ?? null
+      }
       const res = await fetch('/api/content/music', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-wallet-address': wallet },
-        body: JSON.stringify({ title: music.title.trim(), description: music.description.trim() || null, audio_url: music.audio_url.trim() || null, cover_image_url, genre: music.genre.trim() || null, instrument: music.instrument.trim() || null, price: Number(music.price), tags: music.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+        body: JSON.stringify({ title: music.title.trim(), description: music.description.trim() || null, audio_url: music.audio_url.trim() || null, cover_image_url, genre: music.genre.trim() || null, instrument: music.instrument.trim() || null, price: musicIsPaid ? parseFloat(musicPrice) : 0, tags: music.tags.split(',').map((t) => t.trim()).filter(Boolean) }),
       })
       const result = await res.json()
       if (!res.ok || result.error) throw new Error(result.error ?? 'Failed to publish music')
       setSuccess('Music published! 🎉')
-      setMusic({ title: '', description: '', audio_url: '', genre: '', instrument: '', price: 0, tags: '' })
+      setMusic({ title: '', description: '', audio_url: '', genre: '', instrument: '', tags: '' })
+      setMusicIsPaid(false); setMusicPrice('0')
       setMusicCoverFile(null); setMusicCoverPreview('')
+      setActive(null)
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to publish music') }
     finally { setSubmitting(false) }
   }
@@ -263,45 +275,94 @@ function PublishClient() {
 
           {/* ── BOOK FORM ── */}
           {active === 'book' && (
-            <form onSubmit={(e) => void publishBook(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl border-2 border-[#FFBF00] bg-white p-6 shadow-sm">
-              <h2 className="font-serif text-2xl font-black text-[#1a4731]">Publish a Book / Guide</h2>
-              <Field label="Title *" value={book.title} onChange={(v) => setBook({ ...book, title: v })} required />
-              <label className="grid gap-2 text-sm font-semibold text-forest">
-                Description *
-                <textarea required value={book.description} onChange={(e) => setBook({ ...book, description: e.target.value })} className="min-h-28 rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
-              </label>
+            <form onSubmit={(e) => void publishBook(e)} className="mt-6 max-w-2xl rounded-2xl border-2 border-[#FFBF00] bg-white p-6 md:p-8 shadow-sm space-y-5">
+              <h2 className="font-serif text-2xl font-black text-[#171717]">Publish a Book / Guide</h2>
+
+              {/* Cover Image */}
               <div>
-                <p className="text-sm font-semibold text-forest">Level</p>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Cover Image</label>
+                {bookCoverPreview ? (
+                  <div className="relative rounded-xl overflow-hidden h-48 bg-gray-100 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={bookCoverPreview} className="h-full w-full object-cover" alt="cover" />
+                    <button type="button" onClick={() => { setBookCoverPreview(''); setBookCoverFile(null) }}
+                      className="absolute top-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      Remove ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input type="file" accept="image/*" id="book-cover-img" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) { setBookCoverFile(f); setBookCoverPreview(URL.createObjectURL(f)) }
+                      }} />
+                    <label htmlFor="book-cover-img"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-8 cursor-pointer hover:border-[#FFBF00] hover:bg-[#fdf6e3] transition-all">
+                      <span className="text-3xl">🖼️</span>
+                      <span className="text-sm font-semibold text-gray-600">Click to add cover image</span>
+                      <span className="text-xs text-gray-400">PNG, JPG, WebP — max 10MB</span>
+                    </label>
+                  </>
+                )}
+              </div>
+
+              <Field label="Title *" value={book.title} onChange={(v) => setBook({ ...book, title: v })} required />
+              <label className="grid gap-2 text-sm font-semibold text-[#171717]">
+                Description *
+                <textarea required value={book.description} onChange={(e) => setBook({ ...book, description: e.target.value })} rows={5} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none resize-y" />
+              </label>
+
+              {/* Level */}
+              <div>
+                <p className="text-sm font-semibold text-[#171717] mb-2">Level</p>
+                <div className="flex flex-wrap gap-2">
                   {LEVELS.map((level) => (
                     <button key={level} type="button" onClick={() => setBook({ ...book, level })}
-                      className={`rounded-full px-4 py-2 text-sm font-bold ${book.level === level ? 'bg-[#FFBF00] text-[#171717]' : 'bg-off-white text-forest'}`}>{level}</button>
+                      className={`rounded-full px-4 py-2 text-sm font-bold ${book.level === level ? 'bg-[#FFBF00] text-[#171717]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{level}</button>
                   ))}
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-forest">
-                <input type="checkbox" checked={book.isFree} onChange={(e) => setBook({ ...book, isFree: e.target.checked, price: e.target.checked ? 0 : book.price })} />
-                Free content
-              </label>
-              {!book.isFree && (
-                <label className="grid gap-2 text-sm font-semibold text-forest">
-                  Price (USD equivalent)
-                  <input type="number" min={0} step="0.01" value={book.price} onChange={(e) => setBook({ ...book, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
+
+              {/* Paid toggle */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className={`relative w-11 h-6 rounded-full transition-colors ${!bookIsFree ? 'bg-[#1a4731]' : 'bg-gray-200'}`}
+                    onClick={() => setBookIsFree(!bookIsFree)}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${!bookIsFree ? 'left-6' : 'left-1'}`} />
+                  </div>
+                  <span className="text-sm font-semibold text-[#171717]">Paid content</span>
                 </label>
-              )}
-              <label className="grid gap-2 text-sm font-semibold text-forest">Cover image <input type="file" accept="image/*" onChange={(e) => onImagePick(e, 'book')} /></label>
-              {bookCoverPreview ? <CoverPreview src={bookCoverPreview} /> : null}
+                {!bookIsFree && (
+                  <input type="number" min="0.01" step="0.01" value={bookPrice}
+                    onChange={e => setBookPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                )}
+                {!bookIsFree && <span className="text-xs text-gray-400">Buyers pay in cUSD, CELO, or USDT</span>}
+              </div>
+
+              {/* Book file */}
               <div>
-                <p className="text-sm font-semibold text-forest">Book file</p>
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => setBookFileMode('upload')} className={`rounded-full px-4 py-2 text-xs font-bold ${bookFileMode === 'upload' ? 'bg-[#1a4731] text-white' : 'bg-off-white text-forest'}`}>Upload file</button>
-                  <button type="button" onClick={() => setBookFileMode('url')} className={`rounded-full px-4 py-2 text-xs font-bold ${bookFileMode === 'url' ? 'bg-[#1a4731] text-white' : 'bg-off-white text-forest'}`}>External URL</button>
+                <p className="text-sm font-semibold text-[#171717] mb-2">Book file</p>
+                <div className="flex gap-2 mb-2">
+                  <button type="button" onClick={() => setBookFileMode('upload')} className={`rounded-full px-4 py-2 text-xs font-bold ${bookFileMode === 'upload' ? 'bg-[#1a4731] text-white' : 'bg-gray-100 text-gray-600'}`}>Upload file</button>
+                  <button type="button" onClick={() => setBookFileMode('url')} className={`rounded-full px-4 py-2 text-xs font-bold ${bookFileMode === 'url' ? 'bg-[#1a4731] text-white' : 'bg-gray-100 text-gray-600'}`}>External URL</button>
                 </div>
                 {bookFileMode === 'upload'
-                  ? <input type="file" accept=".pdf,.doc,.docx" className="mt-2 block w-full text-sm" onChange={(e) => setBookFile(e.target.files?.[0] ?? null)} />
-                  : <input type="url" placeholder="https://..." value={book.file_url} onChange={(e) => setBook({ ...book, file_url: e.target.value })} className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-normal focus:border-[#FFBF00] focus:outline-none" />}
+                  ? <input type="file" accept=".pdf,.doc,.docx" className="block w-full text-sm" onChange={(e) => setBookFile(e.target.files?.[0] ?? null)} />
+                  : <input type="url" placeholder="https://..." value={book.file_url} onChange={(e) => setBook({ ...book, file_url: e.target.value })} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-normal focus:border-[#FFBF00] focus:outline-none" />}
               </div>
-              <Field label="Tags (comma separated)" value={book.tags} onChange={(v) => setBook({ ...book, tags: v })} />
+
+              {/* Tags */}
+              <div>
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Tags</label>
+                <input type="text" value={book.tags} onChange={e => setBook({ ...book, tags: e.target.value })}
+                  placeholder="kiswahili, culture, history (comma separated)"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                <p className="mt-1 text-xs text-gray-400">Tags help learners discover your content</p>
+              </div>
+
               <SubmitBtn submitting={submitting} label="Publish Book" />
             </form>
           )}
@@ -431,6 +492,7 @@ function PublishClient() {
                 <input type="text" value={postTags} onChange={e => setPostTags(e.target.value)}
                   placeholder="kiswahili, culture, history (comma separated)"
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                <p className="mt-1 text-xs text-gray-400">Tags help learners discover your content</p>
               </div>
 
               {/* Submit */}
@@ -443,59 +505,163 @@ function PublishClient() {
 
           {/* ── VIDEO FORM ── */}
           {active === 'video' && (
-            <form onSubmit={(e) => void publishVideo(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl border-2 border-[#FFBF00] bg-white p-6 shadow-sm">
-              <h2 className="font-serif text-2xl font-black text-[#1a4731]">Upload a Video</h2>
+            <form onSubmit={(e) => void publishVideo(e)} className="mt-6 max-w-2xl rounded-2xl border-2 border-[#FFBF00] bg-white p-6 md:p-8 shadow-sm space-y-5">
+              <h2 className="font-serif text-2xl font-black text-[#171717]">Upload a Video</h2>
+
+              {/* Thumbnail */}
+              <div>
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Thumbnail Image</label>
+                {videoThumbPreview ? (
+                  <div className="relative rounded-xl overflow-hidden h-48 bg-gray-100 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={videoThumbPreview} className="h-full w-full object-cover" alt="thumbnail" />
+                    <button type="button" onClick={() => { setVideoThumbPreview(''); setVideoThumbFile(null) }}
+                      className="absolute top-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      Remove ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input type="file" accept="image/*" id="video-thumb-img" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) { setVideoThumbFile(f); setVideoThumbPreview(URL.createObjectURL(f)) }
+                      }} />
+                    <label htmlFor="video-thumb-img"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-8 cursor-pointer hover:border-[#FFBF00] hover:bg-[#fdf6e3] transition-all">
+                      <span className="text-3xl">🖼️</span>
+                      <span className="text-sm font-semibold text-gray-600">Click to add thumbnail</span>
+                      <span className="text-xs text-gray-400">PNG, JPG, WebP — max 10MB</span>
+                    </label>
+                  </>
+                )}
+              </div>
+
               <Field label="Title *" value={video.title} onChange={(v) => setVideo({ ...video, title: v })} required />
-              <label className="grid gap-2 text-sm font-semibold text-forest">
+              <label className="grid gap-2 text-sm font-semibold text-[#171717]">
                 Description
-                <textarea value={video.description} onChange={(e) => setVideo({ ...video, description: e.target.value })} className="min-h-24 rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
+                <textarea value={video.description} onChange={(e) => setVideo({ ...video, description: e.target.value })} rows={4} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none resize-y" />
               </label>
-              <Field label="Video URL (YouTube, Vimeo, or direct)" value={video.video_url} onChange={(v) => setVideo({ ...video, video_url: v })} />
-              <label className="grid gap-2 text-sm font-semibold text-forest">Thumbnail image <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; setVideoThumbFile(f); setVideoThumbPreview(URL.createObjectURL(f)) }} /></label>
-              {videoThumbPreview ? <CoverPreview src={videoThumbPreview} /> : null}
-              <label className="grid gap-2 text-sm font-semibold text-forest">
+              <Field label="Video URL (YouTube, Vimeo, or direct link)" value={video.video_url} onChange={(v) => setVideo({ ...video, video_url: v })} />
+
+              <label className="grid gap-2 text-sm font-semibold text-[#171717]">
                 Category
                 <select value={video.category} onChange={(e) => setVideo({ ...video, category: e.target.value })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none">
                   {CONTENT_CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
                 </select>
               </label>
+
               <div>
-                <p className="text-sm font-semibold text-forest">Level</p>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <p className="text-sm font-semibold text-[#171717] mb-2">Level</p>
+                <div className="flex flex-wrap gap-2">
                   {['A1','A2','B1','B2','C1','C2','N/A'].map((l) => (
                     <button key={l} type="button" onClick={() => setVideo({ ...video, level: l })}
-                      className={`rounded-full px-4 py-2 text-sm font-bold ${video.level === l ? 'bg-[#FFBF00] text-[#171717]' : 'bg-off-white text-forest'}`}>{l}</button>
+                      className={`rounded-full px-4 py-2 text-sm font-bold ${video.level === l ? 'bg-[#FFBF00] text-[#171717]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
                   ))}
                 </div>
               </div>
-              <label className="grid gap-2 text-sm font-semibold text-forest">
-                Price (USD equivalent — 0 = free for everyone)
-                <input type="number" min={0} step="0.01" value={video.price} onChange={(e) => setVideo({ ...video, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
-              </label>
-              <Field label="Tags (comma separated)" value={video.tags} onChange={(v) => setVideo({ ...video, tags: v })} />
+
+              {/* Paid toggle */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className={`relative w-11 h-6 rounded-full transition-colors ${videoIsPaid ? 'bg-[#1a4731]' : 'bg-gray-200'}`}
+                    onClick={() => setVideoIsPaid(!videoIsPaid)}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${videoIsPaid ? 'left-6' : 'left-1'}`} />
+                  </div>
+                  <span className="text-sm font-semibold text-[#171717]">Paid content</span>
+                </label>
+                {videoIsPaid && (
+                  <input type="number" min="0.01" step="0.01" value={videoPrice}
+                    onChange={e => setVideoPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                )}
+                {videoIsPaid && <span className="text-xs text-gray-400">Buyers pay in cUSD, CELO, or USDT</span>}
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Tags</label>
+                <input type="text" value={video.tags} onChange={e => setVideo({ ...video, tags: e.target.value })}
+                  placeholder="kiswahili, culture, history (comma separated)"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                <p className="mt-1 text-xs text-gray-400">Tags help learners discover your content</p>
+              </div>
+
               <SubmitBtn submitting={submitting} label="Publish Video" />
             </form>
           )}
 
           {/* ── MUSIC FORM ── */}
           {active === 'music' && (
-            <form onSubmit={(e) => void publishMusic(e)} className="mt-6 grid max-w-2xl gap-4 rounded-2xl border-2 border-[#FFBF00] bg-white p-6 shadow-sm">
-              <h2 className="font-serif text-2xl font-black text-[#1a4731]">Upload Music / Audio</h2>
+            <form onSubmit={(e) => void publishMusic(e)} className="mt-6 max-w-2xl rounded-2xl border-2 border-[#FFBF00] bg-white p-6 md:p-8 shadow-sm space-y-5">
+              <h2 className="font-serif text-2xl font-black text-[#171717]">Upload Music / Audio</h2>
+
+              {/* Cover Image */}
+              <div>
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Cover Image</label>
+                {musicCoverPreview ? (
+                  <div className="relative rounded-xl overflow-hidden h-48 bg-gray-100 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={musicCoverPreview} className="h-full w-full object-cover" alt="cover" />
+                    <button type="button" onClick={() => { setMusicCoverPreview(''); setMusicCoverFile(null) }}
+                      className="absolute top-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      Remove ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input type="file" accept="image/*" id="music-cover-img" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) { setMusicCoverFile(f); setMusicCoverPreview(URL.createObjectURL(f)) }
+                      }} />
+                    <label htmlFor="music-cover-img"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-8 cursor-pointer hover:border-[#FFBF00] hover:bg-[#fdf6e3] transition-all">
+                      <span className="text-3xl">🖼️</span>
+                      <span className="text-sm font-semibold text-gray-600">Click to add cover image</span>
+                      <span className="text-xs text-gray-400">PNG, JPG, WebP — max 10MB</span>
+                    </label>
+                  </>
+                )}
+              </div>
+
               <Field label="Title *" value={music.title} onChange={(v) => setMusic({ ...music, title: v })} required />
-              <label className="grid gap-2 text-sm font-semibold text-forest">
+              <label className="grid gap-2 text-sm font-semibold text-[#171717]">
                 Description
-                <textarea value={music.description} onChange={(e) => setMusic({ ...music, description: e.target.value })} className="min-h-24 rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
+                <textarea value={music.description} onChange={(e) => setMusic({ ...music, description: e.target.value })} rows={4} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none resize-y" />
               </label>
               <Field label="Audio URL (SoundCloud, direct MP3)" value={music.audio_url} onChange={(v) => setMusic({ ...music, audio_url: v })} />
-              <label className="grid gap-2 text-sm font-semibold text-forest">Cover image <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; setMusicCoverFile(f); setMusicCoverPreview(URL.createObjectURL(f)) }} /></label>
-              {musicCoverPreview ? <CoverPreview src={musicCoverPreview} /> : null}
               <Field label="Genre (Traditional, Contemporary, Folk…)" value={music.genre} onChange={(v) => setMusic({ ...music, genre: v })} />
               <Field label="Instrument (if applicable)" value={music.instrument} onChange={(v) => setMusic({ ...music, instrument: v })} />
-              <label className="grid gap-2 text-sm font-semibold text-forest">
-                Price (USD equivalent — 0 = free for everyone)
-                <input type="number" min={0} step="0.01" value={music.price} onChange={(e) => setMusic({ ...music, price: Number(e.target.value) })} className="rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
-              </label>
-              <Field label="Tags (comma separated)" value={music.tags} onChange={(v) => setMusic({ ...music, tags: v })} />
+
+              {/* Paid toggle */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className={`relative w-11 h-6 rounded-full transition-colors ${musicIsPaid ? 'bg-[#1a4731]' : 'bg-gray-200'}`}
+                    onClick={() => setMusicIsPaid(!musicIsPaid)}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${musicIsPaid ? 'left-6' : 'left-1'}`} />
+                  </div>
+                  <span className="text-sm font-semibold text-[#171717]">Paid content</span>
+                </label>
+                {musicIsPaid && (
+                  <input type="number" min="0.01" step="0.01" value={musicPrice}
+                    onChange={e => setMusicPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                )}
+                {musicIsPaid && <span className="text-xs text-gray-400">Buyers pay in cUSD, CELO, or USDT</span>}
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="text-sm font-semibold text-[#171717] block mb-2">Tags</label>
+                <input type="text" value={music.tags} onChange={e => setMusic({ ...music, tags: e.target.value })}
+                  placeholder="kiswahili, culture, history (comma separated)"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none" />
+                <p className="mt-1 text-xs text-gray-400">Tags help learners discover your content</p>
+              </div>
+
               <SubmitBtn submitting={submitting} label="Publish Music" />
             </form>
           )}
