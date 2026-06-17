@@ -1,27 +1,26 @@
-import { getAuthenticatedProfile, jsonError, jsonOk } from '@/lib/api'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-type ReferralStat = {
-  status?: string | null
-  reward_amount?: number | string | null
+export async function GET(request: NextRequest) {
+  const wallet = request.headers.get('x-wallet-address')
+  if (!wallet) return NextResponse.json({ referred_count: 0, earned: 0 })
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { count } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .ilike('referred_by', wallet)
+
+  const { data: rewards } = await supabase
+    .from('referral_rewards')
+    .select('amount')
+    .ilike('referrer_wallet', wallet)
+
+  const earned = (rewards ?? []).reduce((sum, r) => sum + Number(r.amount ?? 0), 0)
+
+  return NextResponse.json({ referred_count: count ?? 0, earned })
 }
-
-export async function GET() {
-  const auth = await getAuthenticatedProfile()
-  if (auth.error || !auth.profile) return jsonError(auth.error ?? 'Authentication required', 401)
-
-  const supabase = await createServerSupabaseClient()
-  const { data, error } = await supabase.from('referrals').select('*').eq('referrer_id', auth.userId)
-
-  if (error) return jsonError('Unable to load referral stats', 500)
-
-  const referrals = (data ?? []) as ReferralStat[]
-  const pending = referrals.filter((item) => item.status === 'pending').length
-  const rewarded = referrals.filter((item) => item.status === 'rewarded').length
-  const totalEarned = referrals
-    .filter((item) => item.status === 'rewarded')
-    .reduce((sum, item) => sum + Number(item.reward_amount ?? 0), 0)
-
-  return jsonOk({ total_referrals: referrals.length, pending, rewarded, total_earned: totalEarned }, 'Referral stats loaded')
-}
-

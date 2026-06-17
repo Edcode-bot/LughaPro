@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('wallet_address', wallet.toLowerCase())
+    .ilike('wallet_address', wallet)
     .maybeSingle()
 
   if (!profile) return NextResponse.json({ data: [] })

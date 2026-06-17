@@ -130,16 +130,30 @@ export async function POST(request: Request) {
 
     if (error) return jsonError(error.message, 500)
 
+    // Check if buyer was referred — issue a pending reward for the referrer
     try {
-      const origin = new URL(request.url).origin
-      await fetch(`${origin}/api/admin/trigger-referral`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': process.env.ADMIN_SECRET ?? '',
-        },
-        body: JSON.stringify({ userAddress: wallet }),
-      })
+      const { data: buyerProfile } = await supabase
+        .from('profiles')
+        .select('id, referred_by')
+        .ilike('wallet_address', wallet)
+        .maybeSingle()
+
+      if (buyerProfile?.referred_by) {
+        const { data: existingReward } = await supabase
+          .from('referral_rewards')
+          .select('id')
+          .ilike('referred_wallet', wallet)
+          .maybeSingle()
+
+        if (!existingReward) {
+          await supabase.from('referral_rewards').insert({
+            referrer_wallet: buyerProfile.referred_by,
+            referred_wallet: wallet.toLowerCase(),
+            amount: 0.1,
+            paid: false,
+          })
+        }
+      }
     } catch {
       // Referral reward failure must not block purchase recording
     }

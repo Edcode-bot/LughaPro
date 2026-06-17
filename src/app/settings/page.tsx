@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
@@ -53,25 +52,35 @@ function SettingsClient() {
   const [fullName, setFullName] = useState('')
   const [bio, setBio] = useState('')
   const [country, setCountry] = useState('')
-  const [languages, setLanguages] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
-  const [avatarPreview, setAvatarPreview] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  useEffect(() => {
+    // Load avatar from localStorage first (instant)
+    try {
+      const stored = localStorage.getItem('lugha_profile')
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, unknown>
+        if (parsed.avatar_url) setAvatarUrl(parsed.avatar_url as string)
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     if (!profile) return
     setFullName(profile.full_name ?? '')
     setBio(profile.bio ?? '')
     setCountry(profile.country ?? '')
-    setLanguages((profile.languages ?? []).join(', '))
-    setAvatarUrl((profile as Record<string, unknown>).avatar_url as string ?? '')
+    const av = (profile as Record<string, unknown>).avatar_url as string | undefined
+    if (av) setAvatarUrl(av)
   }, [profile])
 
   async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !address) return
-    setAvatarPreview(URL.createObjectURL(file))
+    // Instant local preview
+    setAvatarUrl(URL.createObjectURL(file))
     setUploadingAvatar(true)
     try {
       const formData = new FormData()
@@ -84,20 +93,18 @@ function SettingsClient() {
       const data = await res.json() as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
       setAvatarUrl(data.url)
-      // Sync localStorage and notify navbar
+      // Sync localStorage and notify sidebar/navbar
       try {
         const stored = localStorage.getItem('lugha_profile')
-        if (stored) {
-          const parsed = JSON.parse(stored) as Record<string, unknown>
-          parsed.avatar_url = data.url
-          localStorage.setItem('lugha_profile', JSON.stringify(parsed))
-          window.dispatchEvent(new Event('lugha_profile_updated'))
-        }
+        const parsed = stored ? JSON.parse(stored) as Record<string, unknown> : {}
+        parsed.avatar_url = data.url
+        localStorage.setItem('lugha_profile', JSON.stringify(parsed))
+        window.dispatchEvent(new Event('lugha_profile_updated'))
       } catch { /* ignore */ }
       toast({ title: 'Avatar updated', type: 'success' })
     } catch (err) {
       toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Error', type: 'error' })
-      setAvatarPreview('')
+      setAvatarUrl(null)
     } finally {
       setUploadingAvatar(false)
     }
@@ -109,7 +116,7 @@ function SettingsClient() {
     const res = await fetch('/api/profiles/me', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
-      body: JSON.stringify({ full_name: fullName, bio, country, languages }),
+      body: JSON.stringify({ full_name: fullName, bio, country }),
     })
     const result = await res.json()
     setSaving(false)
@@ -125,8 +132,6 @@ function SettingsClient() {
     toast({ title: 'Profile saved', type: 'success' })
   }
 
-  const displayAvatar = avatarPreview || avatarUrl
-
   return (
     <DashboardLayout>
       <ErrorBoundary>
@@ -138,16 +143,15 @@ function SettingsClient() {
             <Section title="Profile">
               {/* Avatar */}
               <div className="flex items-center gap-5">
-                <div className="relative">
-                  {displayAvatar ? (
-                    <Image src={displayAvatar} alt="Avatar" width={80} height={80} className="h-20 w-20 rounded-full object-cover" />
+                <div className="relative h-20 w-20 rounded-full overflow-hidden bg-[#FFBF00] flex items-center justify-center flex-shrink-0">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="grid h-20 w-20 place-items-center rounded-full bg-[#FFBF00] text-2xl font-black text-[#171717]">
-                      {initials(displayName)}
-                    </div>
+                    <span className="text-2xl font-black text-[#171717]">{initials(displayName)}</span>
                   )}
                   {uploadingAvatar && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                       <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     </div>
                   )}
@@ -172,7 +176,6 @@ function SettingsClient() {
                   <textarea value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-28 rounded-xl border border-gray-200 px-4 py-3 font-normal focus:border-[#FFBF00] focus:outline-none" />
                 </label>
                 <Field label="Country" value={country} onChange={setCountry} />
-                <Field label="Languages (comma separated)" value={languages} onChange={setLanguages} />
                 <button type="submit" disabled={saving} className="rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717] disabled:opacity-50">
                   {saving ? 'Saving…' : 'Save Profile'}
                 </button>

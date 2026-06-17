@@ -1,9 +1,8 @@
 'use client'
 
-import { Copy, ExternalLink, Loader2 } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isAddress } from 'viem'
-import { formatUnits } from 'viem'
 import { AuthGuard } from '@/components/AuthGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
@@ -11,7 +10,6 @@ import { FadeIn } from '@/components/ui/FadeIn'
 import { WalletWidget } from '@/components/WalletWidget'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/Toast'
-import { useHasBeenReferred, useReferralEarnings, useRegisterReferral } from '@/hooks/useContracts'
 
 export default function WalletPage() {
   return (
@@ -24,79 +22,98 @@ export default function WalletPage() {
 function WalletClient() {
   const { address } = useAuth()
   const { toast } = useToast()
-  const [referral, setReferral] = useState<{
-    referral_link?: string
-    referral_code?: string
-    total_referred?: number
-    total_earned?: number
-  } | null>(null)
+
+  const [referralLink, setReferralLink] = useState<string | null>(null)
+  const [referralStats, setReferralStats] = useState({ referred_count: 0, earned: 0 })
   const [referrerInput, setReferrerInput] = useState('')
-  const [registering, setRegistering] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [alreadyReferred, setAlreadyReferred] = useState(false)
 
-  const wallet = address as `0x${string}` | undefined
-  const { data: hasBeenReferred, refetch: refetchReferred } = useHasBeenReferred(wallet)
-  const { data: onChainEarnings, refetch: refetchEarnings } = useReferralEarnings(wallet)
-  const { registerReferral, isPending } = useRegisterReferral()
-
+  // Generate referral link
   useEffect(() => {
     if (!address) return
     fetch('/api/referrals/generate', {
       method: 'POST',
       headers: { 'x-wallet-address': address },
     })
-      .then((response) => response.json())
-      .then((result) => setReferral(result.data ?? null))
-      .catch(() => setReferral(null))
+      .then((r) => r.json())
+      .then((result: { data?: { referral_link?: string } }) => {
+        setReferralLink(result.data?.referral_link ?? `https://lugha-pro.vercel.app?ref=${address}`)
+      })
+      .catch(() => setReferralLink(`https://lugha-pro.vercel.app?ref=${address}`))
+  }, [address])
+
+  // Fetch referral stats
+  useEffect(() => {
+    if (!address) return
+    fetch('/api/referrals/stats', { headers: { 'x-wallet-address': address } })
+      .then((r) => r.json())
+      .then((data: { referred_count?: number; earned?: number; error?: string }) => {
+        if (!data.error) setReferralStats({ referred_count: data.referred_count ?? 0, earned: data.earned ?? 0 })
+      })
+      .catch(() => { /* ignore */ })
+  }, [address])
+
+  // Check if already referred (referred_by set on profile)
+  useEffect(() => {
+    if (!address) return
+    fetch('/api/profiles/me', { headers: { 'x-wallet-address': address } })
+      .then((r) => r.json())
+      .then((d: { data?: { referred_by?: string } }) => {
+        if (d.data?.referred_by) setAlreadyReferred(true)
+      })
+      .catch(() => { /* ignore */ })
   }, [address])
 
   async function copyLink() {
-    if (!referral?.referral_link) return
-    await navigator.clipboard.writeText(referral.referral_link)
+    if (!referralLink) return
+    await navigator.clipboard.writeText(referralLink)
     toast({ title: 'Copied', description: 'Referral link copied to clipboard', type: 'success' })
   }
 
   async function applyReferral() {
-    const referrer = referrerInput.trim().toLowerCase()
+    const referrer = referrerInput.trim()
     if (!isAddress(referrer)) {
       toast({ title: 'Invalid address', description: 'Enter a valid Celo wallet address', type: 'error' })
       return
     }
-    if (referrer === address?.toLowerCase()) {
+    if (referrer.toLowerCase() === address?.toLowerCase()) {
       toast({ title: 'Invalid referrer', description: 'You cannot refer yourself', type: 'error' })
       return
     }
-    setRegistering(true)
+    setApplying(true)
     try {
-      await registerReferral(referrer as `0x${string}`)
-      await refetchReferred()
-      toast({
-        title: 'Referral registered on-chain!',
-        description: 'Your referrer will earn 5 cUSD when you make your first purchase.',
-        type: 'success',
+      const res = await fetch('/api/referrals/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address ?? '' },
+        body: JSON.stringify({ referrer_wallet: referrer }),
       })
-      setReferrerInput('')
-      await refetchEarnings()
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed'
-      toast({ title: 'Could not register', description: msg.slice(0, 120), type: 'error' })
+      const data = await res.json() as { success?: boolean; error?: string }
+      if (data.error) {
+        toast({ title: 'Error', description: data.error, type: 'error' })
+      } else {
+        setAlreadyReferred(true)
+        setReferrerInput('')
+        toast({ title: 'Referral applied!', description: 'Your referrer will earn a reward when you make your first purchase.', type: 'success' })
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to apply referral', type: 'error' })
     } finally {
-      setRegistering(false)
+      setApplying(false)
     }
   }
-
-  const earnedDisplay =
-    onChainEarnings !== undefined
-      ? Number(formatUnits(onChainEarnings, 18)).toFixed(2)
-      : (referral?.total_earned ?? 0).toFixed(2)
 
   return (
     <DashboardLayout>
       <ErrorBoundary>
         <FadeIn>
-          <h1 className="font-serif text-4xl font-black text-forest">Wallet</h1>
-          <p className="mt-2 text-foreground/65">Manage your Celo wallet and referral rewards.</p>
+          <div className="mb-8">
+            <h1 className="font-serif text-3xl font-black text-[#171717]">Wallet</h1>
+            <p className="text-gray-500 mt-1">Manage your Celo wallet and referral rewards.</p>
+          </div>
 
-          <section className="mt-8 rounded-2xl bg-[#171717] p-6 text-white shadow-sm">
+          {/* Address card */}
+          <div className="rounded-2xl bg-[#171717] p-6 text-white mb-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Wallet address</p>
             <p className="mt-2 break-all font-mono text-sm text-white/90">{address}</p>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -121,81 +138,80 @@ function WalletClient() {
             <span className="mt-4 inline-flex rounded-full bg-[#FFBF00]/20 px-3 py-1 text-xs font-bold text-[#FFBF00]">
               Celo Mainnet
             </span>
-          </section>
+          </div>
 
-          <section className="mt-6">
+          {/* Balances */}
+          <div className="rounded-2xl bg-white border border-gray-100 p-6 mb-6">
             <WalletWidget />
-          </section>
+          </div>
 
-          <section className="mt-6 flex flex-wrap gap-3">
-            <a
-              href="https://app.ubeswap.org"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717] hover:bg-[#e6ac00]"
-            >
-              Add Funds
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-3 mb-8">
+            <a href="https://app.ubeswap.org" target="_blank" rel="noopener noreferrer"
+              className="rounded-full bg-[#FFBF00] px-5 py-2.5 text-sm font-black text-[#171717] hover:bg-[#e6ac00]">
+              Add Funds (Ubeswap)
             </a>
-            <a
-              href="https://minipay.opera.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731] hover:bg-[#1a4731] hover:text-white"
-            >
+            <a href="https://minipay.opera.com" target="_blank" rel="noopener noreferrer"
+              className="rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-[#171717] hover:border-[#FFBF00]">
               Add Funds via MiniPay
             </a>
-            <a
-              href={address ? `https://celoscan.io/address/${address}` : '#'}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border-2 border-[#1a4731] px-6 py-3 font-bold text-[#1a4731] hover:bg-[#1a4731] hover:text-white"
-            >
+            <a href={address ? `https://celoscan.io/address/${address}` : '#'} target="_blank" rel="noopener noreferrer"
+              className="rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-[#171717] hover:border-[#FFBF00]">
               View Transactions
             </a>
-          </section>
+          </div>
 
-          <section className="mt-8 rounded-2xl bg-forest p-6 text-cream">
-            <h2 className="font-serif text-2xl font-bold">Earn 5 cUSD for every friend you refer</h2>
-            <p className="mt-2 text-sm text-cream/75">Share your link — rewards are paid on-chain when friends purchase.</p>
-            <p className="mt-4 break-all rounded-xl bg-white/10 p-3 text-sm font-mono">
-              {referral?.referral_link ?? 'Generating link...'}
-            </p>
+          {/* Referral section */}
+          <div className="rounded-2xl bg-[#1a4731] p-6 mb-6">
+            <h2 className="font-serif text-xl font-black text-white mb-1">Refer friends, earn rewards</h2>
+            <p className="text-sm text-white/70 mb-4">Share your link — you earn 0.1 cUSD for each friend who makes their first purchase.</p>
+            <div className="rounded-xl bg-white/10 p-3 font-mono text-sm text-white/90 break-all mb-4">
+              {referralLink ?? 'Generating link...'}
+            </div>
             <button
               type="button"
               onClick={() => void copyLink()}
-              className="mt-4 rounded-full bg-gold px-5 py-2 text-sm font-bold text-foreground"
+              className="rounded-full bg-[#FFBF00] px-5 py-2 text-sm font-black text-[#171717] hover:bg-[#e6ac00]"
             >
               Copy Link
             </button>
-            <p className="mt-4 text-sm font-semibold text-gold">
-              You&apos;ve earned {earnedDisplay} cUSD from referrals (on-chain)
-            </p>
-          </section>
+            <div className="mt-4 flex gap-6">
+              <div>
+                <div className="text-2xl font-black text-white">{referralStats.referred_count}</div>
+                <div className="text-xs text-white/50 mt-0.5">Friends referred</div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-[#FFBF00]">{referralStats.earned.toFixed(2)} cUSD</div>
+                <div className="text-xs text-white/50 mt-0.5">Rewards earned</div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-white/40">Rewards are platform-funded and paid manually to your wallet.</p>
+          </div>
 
-          {!hasBeenReferred ? (
-            <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="font-serif text-xl font-black text-forest">Enter referral code</h2>
-              <p className="mt-2 text-sm text-foreground/60">Paste your referrer&apos;s wallet address to register on-chain.</p>
+          {/* Enter referral code */}
+          {alreadyReferred ? (
+            <div className="rounded-2xl bg-white border border-gray-100 p-5">
+              <p className="text-sm font-semibold text-[#1a4731]">✓ Referral registered — your referrer will be rewarded on your first purchase.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white border border-gray-100 p-6">
+              <h2 className="font-serif text-lg font-black text-[#1a4731] mb-1">Enter a referral code</h2>
+              <p className="text-sm text-gray-500 mb-4">Paste your referrer&apos;s wallet address to register.</p>
               <input
                 value={referrerInput}
                 onChange={(e) => setReferrerInput(e.target.value)}
                 placeholder="0x..."
-                className="mt-4 w-full rounded-xl border border-forest/15 px-4 py-3 font-mono text-sm"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 font-mono text-sm focus:border-[#FFBF00] focus:outline-none mb-4"
               />
               <button
                 type="button"
-                disabled={registering || isPending}
+                disabled={applying || !referrerInput.trim()}
                 onClick={() => void applyReferral()}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-forest px-6 py-3 text-sm font-bold text-white disabled:opacity-50"
+                className="rounded-full bg-[#1a4731] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#2d6a4f] disabled:opacity-50"
               >
-                {(registering || isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-                Apply Referral
+                {applying ? 'Applying…' : 'Apply Referral'}
               </button>
-            </section>
-          ) : (
-            <section className="mt-6 rounded-2xl bg-cream p-5">
-              <p className="text-sm font-semibold text-forest">✓ Referral registered on-chain</p>
-            </section>
+            </div>
           )}
         </FadeIn>
       </ErrorBoundary>
