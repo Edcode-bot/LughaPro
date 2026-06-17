@@ -69,6 +69,9 @@ export function LearnDetailClient({ id }: { id: string }) {
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
   const [readingProgress, setReadingProgress] = useState(0)
+  const [certEligible, setCertEligible] = useState(false)
+  const [certMinted, setCertMinted] = useState(false)
+  const [minting, setMinting] = useState(false)
 
   // Load content — type param is a hint for search order; API falls through all tables if not found
   useEffect(() => {
@@ -152,6 +155,48 @@ export function LearnDetailClient({ id }: { id: string }) {
     const timer = setTimeout(() => window.addEventListener('scroll', handleScroll, { passive: true }), 500)
     return () => { clearTimeout(timer); window.removeEventListener('scroll', handleScroll) }
   }, [item?.id, address, readingProgress, purchased, showFullContent])
+
+  // Check certificate eligibility once content is accessible
+  useEffect(() => {
+    if (!item || !address || !(purchased === true || showFullContent)) return
+    fetch(`/api/certificates/eligible?content_id=${item.id}`, { headers: { 'x-wallet-address': address } })
+      .then((r) => r.json())
+      .then((d: { eligible?: boolean; already_minted?: boolean }) => {
+        setCertEligible(d.eligible ?? false)
+        setCertMinted(d.already_minted ?? false)
+      })
+      .catch(() => { /* ignore */ })
+  }, [item?.id, address, purchased, showFullContent])
+
+  async function handleMintCertificate() {
+    if (!item || !address) return
+    setMinting(true)
+    try {
+      const res = await fetch('/api/certificates/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+        body: JSON.stringify({
+          content_id: item.id,
+          content_title: item.title,
+          content_type: item.type,
+          creator_name: item.creator_name ?? item.author?.full_name ?? 'LughaPro Creator',
+          level: item.level ?? 'Beginner',
+        }),
+      })
+      const data = await res.json() as { data?: unknown; error?: string }
+      if (data.error) {
+        toast({ title: 'Mint failed', description: data.error, type: 'error' })
+      } else {
+        setCertMinted(true)
+        setCertEligible(false)
+        toast({ title: 'Certificate minted! 🏅', description: 'View it in your Certificates page.', type: 'success' })
+      }
+    } catch {
+      toast({ title: 'Mint failed', description: 'Please try again.', type: 'error' })
+    } finally {
+      setMinting(false)
+    }
+  }
 
   async function handlePostComment() {
     if (!newComment.trim() || !address || !item) return
@@ -514,6 +559,32 @@ export function LearnDetailClient({ id }: { id: string }) {
               ) : null}
             </div>
           ) : null}
+
+          {/* Certificate minting — shown after access is granted */}
+          {certEligible && !certMinted && (
+            <div className="mt-6 rounded-2xl border-2 border-[#1a4731]/20 bg-[#1a4731]/5 p-6 text-center">
+              <div className="text-3xl mb-2">🏅</div>
+              <h3 className="font-serif text-lg font-black text-[#1a4731]">Earn Your Certificate</h3>
+              <p className="text-sm text-gray-600 mt-1 mb-4">
+                Mint a blockchain-verified certificate of completion on Celo.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleMintCertificate()}
+                disabled={minting}
+                className="rounded-full bg-[#1a4731] px-6 py-3 font-black text-white hover:bg-[#2d6a4f] disabled:opacity-50 transition-all"
+              >
+                {minting ? 'Minting…' : 'Mint Certificate'}
+              </button>
+            </div>
+          )}
+          {certMinted && (
+            <div className="mt-6 rounded-2xl bg-[#fdf6e3] p-4 text-center">
+              <span className="text-sm font-bold text-[#1a4731]">✓ Certificate minted — view it in your </span>
+              <a href="/certificates" className="text-sm font-bold text-[#FFBF00] hover:underline">Certificates</a>
+              <span className="text-sm font-bold text-[#1a4731]"> page.</span>
+            </div>
+          )}
 
           {/* Comments — only visible when content is accessible */}
           {(free || hasAccess) && (

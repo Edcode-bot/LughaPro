@@ -4,6 +4,7 @@ import { jsonError, jsonOk, getWalletAddress } from '@/lib/api'
 import { getBookOwnerId } from '@/lib/books'
 import { createServiceRoleClient } from '@/lib/supabase-service-role'
 import { Book, ContentItem, ContentType, Post, Profile, PurchaseWithContent } from '@/types'
+import { sendPurchaseConfirmationEmail, sendNewSaleEmail } from '@/lib/email'
 
 async function loadContent(
   supabase: SupabaseClient,
@@ -130,11 +131,11 @@ export async function POST(request: Request) {
 
     if (error) return jsonError(error.message, 500)
 
-    // Check if buyer was referred — issue a pending reward for the referrer
+    // Check if buyer was referred — issue a pending reward; also fetch profiles for emails
     try {
       const { data: buyerProfile } = await supabase
         .from('profiles')
-        .select('id, referred_by')
+        .select('id, referred_by, email, full_name')
         .ilike('wallet_address', wallet)
         .maybeSingle()
 
@@ -154,8 +155,38 @@ export async function POST(request: Request) {
           })
         }
       }
+
+      // Send purchase confirmation to buyer (fire-and-forget)
+      const contentData = await loadContent(supabase, body.content_id!, body.content_type!)
+      if (buyerProfile?.email && contentData && body.tx_hash) {
+        sendPurchaseConfirmationEmail(buyerProfile.email, {
+          contentTitle: contentData.title,
+          creatorName: contentData.creator_name ?? contentData.author?.full_name ?? 'LughaPro Creator',
+          amount: `${body.amount ?? 0} ${(body.payment_method ?? 'cUSD').toUpperCase()}`,
+          txHash: body.tx_hash,
+        }).catch(() => {})
+      }
+
+      // Send new sale email to creator (fire-and-forget)
+      if (contentData) {
+        const creatorId = contentData.author_id ?? contentData.creator_id
+        if (creatorId) {
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', creatorId)
+            .maybeSingle()
+          if (creatorProfile?.email) {
+            sendNewSaleEmail(creatorProfile.email, {
+              contentTitle: contentData.title,
+              amount: `${body.amount ?? 0} ${(body.payment_method ?? 'cUSD').toUpperCase()}`,
+              buyerName: buyerProfile?.full_name ?? 'A learner',
+            }).catch(() => {})
+          }
+        }
+      }
     } catch {
-      // Referral reward failure must not block purchase recording
+      // Email/referral failures must not block purchase recording
     }
 
     return jsonOk(data, 'Purchase recorded', 201)

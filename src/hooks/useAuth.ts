@@ -61,7 +61,7 @@ export function useAuth() {
       const loginRes = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: address }),
+        body: JSON.stringify({ wallet_address: address, email: (user as { email?: { address?: string } } | null)?.email?.address ?? null }),
       })
       const loginResult = (await loginRes.json()) as { data?: { profile?: Profile } }
       if (loginResult.data?.profile) {

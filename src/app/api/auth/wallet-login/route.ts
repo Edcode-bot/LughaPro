@@ -1,12 +1,14 @@
 ﻿import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceRoleClient } from '@/lib/supabase-service-role'
+import { sendWelcomeEmail } from '@/lib/email'
 
 type WalletLoginBody = {
   wallet_address?: string
   address?: string        // alias accepted from Privy
   privy_user_id?: string  // fallback identifier for email-only users
   role?: 'student' | 'tutor' | null
+  email?: string | null   // Privy user email for welcome notification
 }
 
 function fallbackProfile(walletAddress: string, role: 'student' | 'tutor') {
@@ -96,6 +98,11 @@ export async function POST(request: Request) {
 
     if (role === 'tutor' && profile) {
       await ensureTutorRow(supabase, profile.id)
+    }
+
+    // Fire-and-forget welcome email for new users
+    if (profile && body.email) {
+      sendWelcomeEmail(body.email, profile.full_name ?? 'there').catch(() => {})
     }
 
     return NextResponse.json({
