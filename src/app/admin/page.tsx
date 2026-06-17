@@ -46,7 +46,7 @@ type AdminPurchase = {
   tx_hash: string | null
 }
 
-type AdminTab = 'overview' | 'users' | 'content' | 'transactions'
+type AdminTab = 'overview' | 'users' | 'content' | 'transactions' | 'broadcast'
 
 export default function AdminPage() {
   const { address } = useAuth()
@@ -65,6 +65,10 @@ export default function AdminPage() {
   const [content, setContent] = useState<AdminContent[]>([])
   const [purchases, setPurchases] = useState<AdminPurchase[]>([])
   const [loading, setLoading] = useState(true)
+  const [broadcastTitle, setBroadcastTitle] = useState('')
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcasting, setBroadcasting] = useState(false)
+  const [broadcastSent, setBroadcastSent] = useState(false)
 
   useEffect(() => {
     if (!address || !ADMIN_WALLETS.includes(address.toLowerCase())) return
@@ -90,7 +94,29 @@ export default function AdminPage() {
     { key: 'users', label: `Users (${users.length})` },
     { key: 'content', label: `Content (${content.length})` },
     { key: 'transactions', label: `Transactions (${purchases.length})` },
+    { key: 'broadcast', label: 'Broadcast' },
   ]
+
+  async function sendBroadcast() {
+    if (!address || !broadcastTitle.trim() || !broadcastMessage.trim()) return
+    setBroadcasting(true)
+    try {
+      const res = await fetch('/api/admin/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+        body: JSON.stringify({ title: broadcastTitle, message: broadcastMessage }),
+      })
+      const data = await res.json() as { data?: unknown; error?: string }
+      if (data.data) {
+        setBroadcastTitle('')
+        setBroadcastMessage('')
+        setBroadcastSent(true)
+        setTimeout(() => setBroadcastSent(false), 3000)
+      }
+    } finally {
+      setBroadcasting(false)
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -251,6 +277,37 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* Broadcast */}
+              {tab === 'broadcast' && (
+                <div className="rounded-2xl bg-white border border-gray-100 p-6 max-w-2xl">
+                  <h3 className="font-serif text-xl font-black text-[#171717] mb-1">Send Platform Broadcast</h3>
+                  <p className="text-sm text-gray-500 mb-5">All logged-in users will see this banner until they dismiss it.</p>
+                  <label className="block text-sm font-semibold text-[#1a4731] mb-1">Title</label>
+                  <input
+                    value={broadcastTitle}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
+                    placeholder="e.g. Platform update"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm mb-4 focus:border-[#FFBF00] focus:outline-none"
+                  />
+                  <label className="block text-sm font-semibold text-[#1a4731] mb-1">Message</label>
+                  <textarea
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    placeholder="e.g. We've launched new features! Check your dashboard."
+                    rows={3}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm mb-4 focus:border-[#FFBF00] focus:outline-none resize-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={broadcasting || !broadcastTitle.trim() || !broadcastMessage.trim()}
+                    onClick={() => void sendBroadcast()}
+                    className="rounded-full bg-[#FFBF00] px-6 py-2.5 text-sm font-bold text-[#171717] hover:bg-[#e6ac00] disabled:opacity-50"
+                  >
+                    {broadcasting ? 'Sending…' : broadcastSent ? '✓ Sent!' : 'Send Broadcast'}
+                  </button>
                 </div>
               )}
 

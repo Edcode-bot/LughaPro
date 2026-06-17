@@ -54,7 +54,7 @@ function excerpt(text: string, sentences = 2) {
 export function LearnDetailClient({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get("type");
-  const { address, isConnected } = useAuth();
+  const { address, isConnected, displayName } = useAuth();
   const { toast } = useToast();
   const [item, setItem] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,6 +65,10 @@ export function LearnDetailClient({ id }: { id: string }) {
   const [purchaseTxHash, setPurchaseTxHash] = useState<string | null>(null);
   const [showFullContent, setShowFullContent] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [comments, setComments] = useState<{ id: string; body: string; created_at: string; author_name: string; author_avatar: string | null }[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
+  const [readingProgress, setReadingProgress] = useState(0)
 
   // Load content — type param is a hint for search order; API falls through all tables if not found
   useEffect(() => {
@@ -110,6 +114,63 @@ export function LearnDetailClient({ id }: { id: string }) {
       })
       .catch(() => setPurchased(false));
   }, [item, address]);
+
+  // Load comments when item is available
+  useEffect(() => {
+    if (!item) return
+    fetch(`/api/comments?content_id=${item.id}`)
+      .then((r) => r.json())
+      .then((d: { data?: typeof comments }) => setComments(d.data ?? []))
+      .catch(() => { /* ignore */ })
+  }, [item?.id])
+
+  // Load saved reading progress for books
+  useEffect(() => {
+    if (!item || item.type !== 'book' || !address) return
+    fetch(`/api/reading-progress?book_id=${item.id}`, { headers: { 'x-wallet-address': address } })
+      .then((r) => r.json())
+      .then((d: { progress_percent?: number }) => setReadingProgress(d.progress_percent ?? 0))
+      .catch(() => { /* ignore */ })
+  }, [item?.id, address])
+
+  // Track scroll-based reading progress for books
+  useEffect(() => {
+    if (!item || item.type !== 'book' || !address || !(purchased === true || showFullContent)) return
+    const handleScroll = () => {
+      const scrollH = document.body.scrollHeight - window.innerHeight
+      if (scrollH <= 0) return
+      const pct = Math.min(100, Math.round((window.scrollY / scrollH) * 100))
+      if (pct > readingProgress) {
+        setReadingProgress(pct)
+        void fetch('/api/reading-progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+          body: JSON.stringify({ book_id: item.id, progress_percent: pct }),
+        })
+      }
+    }
+    const timer = setTimeout(() => window.addEventListener('scroll', handleScroll, { passive: true }), 500)
+    return () => { clearTimeout(timer); window.removeEventListener('scroll', handleScroll) }
+  }, [item?.id, address, readingProgress, purchased, showFullContent])
+
+  async function handlePostComment() {
+    if (!newComment.trim() || !address || !item) return
+    setPostingComment(true)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+        body: JSON.stringify({ content_id: item.id, content_type: item.type, body: newComment }),
+      })
+      const data = await res.json() as { data?: { id: string; body: string; created_at: string } }
+      if (data.data) {
+        setComments((prev) => [{ ...data.data!, author_name: displayName ?? 'You', author_avatar: null }, ...prev])
+        setNewComment('')
+      }
+    } finally {
+      setPostingComment(false)
+    }
+  }
 
   function handlePurchaseSuccess(txHash?: string) {
     setPurchased(true);
@@ -164,6 +225,12 @@ export function LearnDetailClient({ id }: { id: string }) {
     <ErrorBoundary>
       <main className="min-h-screen bg-off-white">
         <NavBar />
+        {/* Reading progress bar — books only */}
+        {item.type === 'book' && hasAccess && (
+          <div className="fixed top-16 left-0 right-0 h-1 bg-gray-100 z-40">
+            <div className="h-full bg-[#FFBF00] transition-all duration-300" style={{ width: `${readingProgress}%` }} />
+          </div>
+        )}
         <FadeIn className="mx-auto max-w-3xl px-4 py-8 pb-20 sm:px-6 lg:px-8">
 
           {/* Clean back link — no big badge */}
@@ -447,6 +514,55 @@ export function LearnDetailClient({ id }: { id: string }) {
               ) : null}
             </div>
           ) : null}
+
+          {/* Comments — only visible when content is accessible */}
+          {(free || hasAccess) && (
+            <div className="mt-12 pt-8 border-t border-gray-100">
+              <h3 className="font-serif text-xl font-black text-[#171717] mb-4">
+                Comments ({comments.length})
+              </h3>
+
+              {address && (
+                <div className="flex gap-3 mb-6">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Share your thoughts..."
+                    rows={2}
+                    className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#FFBF00] focus:outline-none resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handlePostComment()}
+                    disabled={postingComment || !newComment.trim()}
+                    className="rounded-full bg-[#FFBF00] px-5 py-2 font-bold text-[#171717] text-sm hover:bg-[#e6ac00] disabled:opacity-50 self-end"
+                  >
+                    {postingComment ? '…' : 'Post'}
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {comments.length === 0 && (
+                  <p className="text-sm text-gray-400">No comments yet. Be the first!</p>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} className="flex gap-3">
+                    <div className="h-8 w-8 rounded-full bg-[#1a4731] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {c.author_name?.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-[#171717]">{c.author_name}</span>
+                        <span className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-0.5">{c.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </FadeIn>
         <Footer />

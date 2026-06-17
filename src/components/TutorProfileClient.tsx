@@ -27,6 +27,31 @@ export function TutorProfileClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [followData, setFollowData] = useState({ follower_count: 0, is_following: false })
+
+  useEffect(() => {
+    fetch(`/api/follows?creator_id=${id}`, {
+      headers: address ? { 'x-wallet-address': address } : {},
+    })
+      .then((r) => r.json())
+      .then((d: { follower_count?: number; is_following?: boolean }) => {
+        setFollowData({ follower_count: d.follower_count ?? 0, is_following: d.is_following ?? false })
+      })
+      .catch(() => { /* ignore */ })
+  }, [id, address])
+
+  async function handleFollow() {
+    if (!address) { setWalletOpen(true); return }
+    await fetch('/api/follows', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address },
+      body: JSON.stringify({ creator_id: id, action: followData.is_following ? 'unfollow' : 'follow' }),
+    })
+    setFollowData((prev) => ({
+      follower_count: prev.is_following ? prev.follower_count - 1 : prev.follower_count + 1,
+      is_following: !prev.is_following,
+    }))
+  }
 
   useEffect(() => {
     let active = true;
@@ -114,8 +139,20 @@ export function TutorProfileClient({ id }: { id: string }) {
                 </div>
                 <h1 className="mt-3 font-serif text-5xl font-black">{name}</h1>
                 <p className="mt-2 text-cream/80">{countryFlag(country)} {country}</p>
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <StarRating rating={Number(tutor.rating ?? 0)} />
+                  <button
+                    type="button"
+                    onClick={() => void handleFollow()}
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                      followData.is_following
+                        ? 'bg-white/20 text-white hover:bg-white/30'
+                        : 'bg-[#FFBF00] text-[#171717] hover:bg-[#e6ac00]'
+                    }`}
+                  >
+                    {followData.is_following ? '✓ Following' : '+ Follow'}
+                  </button>
+                  <span className="text-sm text-cream/60">{followData.follower_count} followers</span>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-4">
                   {[

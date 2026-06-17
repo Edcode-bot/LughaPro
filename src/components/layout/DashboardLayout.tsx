@@ -63,6 +63,22 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
   const { displayName, address, disconnect } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [broadcast, setBroadcast] = useState<{ id: string; title: string; message: string } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/broadcast')
+      .then((r) => r.json())
+      .then((d: { data?: { id: string; title: string; message: string }[] }) => {
+        const latest = d.data?.[0]
+        if (latest) {
+          try {
+            const dismissed = localStorage.getItem('dismissed_broadcast_id')
+            if (dismissed !== latest.id) setBroadcast(latest)
+          } catch { /* ignore */ }
+        }
+      })
+      .catch(() => { /* ignore */ })
+  }, [])
 
   const isAdmin = address && ADMIN_WALLETS.includes(address.toLowerCase());
 
@@ -221,6 +237,26 @@ export function DashboardLayout({ children }: { children: ReactNode; role?: stri
             )}
           </div>
         </div>
+
+        {broadcast && (
+          <div className="bg-[#FFBF00]/10 border-b border-[#FFBF00]/30 px-6 py-3 flex items-center justify-between gap-4">
+            <div className="text-sm">
+              <span className="font-bold text-[#1a4731]">{broadcast.title}</span>
+              <span className="text-[#171717]/70 ml-2">{broadcast.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.setItem('dismissed_broadcast_id', broadcast.id) } catch { /* ignore */ }
+                setBroadcast(null)
+              }}
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0 text-lg leading-none"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 p-5 pb-28 lg:p-8 lg:pb-10">
           {children}
