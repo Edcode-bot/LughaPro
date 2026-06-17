@@ -15,6 +15,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import { ContentItem } from "@/types";
 
+function getEmbedUrl(url: string): string {
+  if (!url) return ''
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+  return url
+}
+
 type ApiResponse = { data?: ContentItem; error?: string | null };
 type CheckResponse = {
   purchased: boolean
@@ -55,6 +64,7 @@ export function LearnDetailClient({ id }: { id: string }) {
   const [purchased, setPurchased] = useState<boolean | null>(null);
   const [purchaseTxHash, setPurchaseTxHash] = useState<string | null>(null);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Load content — type param is a hint for search order; API falls through all tables if not found
   useEffect(() => {
@@ -247,6 +257,49 @@ export function LearnDetailClient({ id }: { id: string }) {
             </div>
           ) : null}
 
+          {/* ——— SOCIAL SHARE ——— */}
+          {(() => {
+            const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+            const shareText = `Check out "${item.title}" on LughaPro`
+            const shareLinks = {
+              whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`,
+              twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+              facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+            }
+            return (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-2">Share</span>
+                <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer"
+                  className="rounded-full bg-gray-100 hover:bg-green-100 p-2 transition-colors" title="Share on WhatsApp">
+                  <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A7.85 7.85 0 0012.04 4a7.94 7.94 0 00-6.9 11.9L4 20l4.2-1.1a7.93 7.93 0 003.84.98h.003a7.94 7.94 0 007.93-7.93 7.9 7.9 0 00-2.37-5.63zm-5.56 12.2h-.003a6.6 6.6 0 01-3.36-.92l-.24-.14-2.5.65.67-2.44-.16-.25a6.6 6.6 0 01-1.01-3.5 6.6 6.6 0 016.6-6.6 6.55 6.55 0 014.67 1.94 6.55 6.55 0 011.93 4.67 6.6 6.6 0 01-6.6 6.6z"/></svg>
+                </a>
+                <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer"
+                  className="rounded-full bg-gray-100 hover:bg-blue-100 p-2 transition-colors" title="Share on X">
+                  <svg className="h-4 w-4 text-[#171717]" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer"
+                  className="rounded-full bg-gray-100 hover:bg-blue-100 p-2 transition-colors" title="Share on Facebook">
+                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(shareUrl)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="rounded-full bg-gray-100 hover:bg-amber-100 p-2 transition-colors" title="Copy link">
+                  {copied ? (
+                    <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
+                  ) : (
+                    <svg className="h-4 w-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  )}
+                </button>
+                {copied && <span className="text-xs text-green-600 font-semibold">Copied!</span>}
+              </div>
+            )
+          })()}
+
           {/* ——— LOCKED PREVIEW (paid, not yet purchased) ——— */}
           {!hasAccess && !free ? (
             <div className="mt-6">
@@ -257,13 +310,15 @@ export function LearnDetailClient({ id }: { id: string }) {
                 </p>
               ) : null}
 
-              {/* Post preview: first sentence with blur — no full content */}
+              {/* Post preview: first 3 paragraphs fading out */}
               {item.type === "post" && item.content ? (
-                <div className="relative mt-4 overflow-hidden rounded-xl bg-white p-5">
-                  <p className="text-foreground/80">
-                    {item.content.split('.')[0].trim() + '…'}
-                  </p>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+                <div className="relative mt-4 max-h-64 overflow-hidden rounded-xl bg-white p-5">
+                  <div className="leading-relaxed text-foreground/80 space-y-3">
+                    {item.content.split('\n').slice(0, 3).map((para, i) => (
+                      <p key={i}>{para || ' '}</p>
+                    ))}
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white via-white/95 to-transparent" />
                 </div>
               ) : null}
 
@@ -289,19 +344,21 @@ export function LearnDetailClient({ id }: { id: string }) {
                 </div>
               ) : null}
 
-              {/* Purchase gate */}
-              <div className="mt-6">
+              {/* Unlock card */}
+              <div className="mt-2 rounded-2xl border-2 border-[#FFBF00]/30 bg-[#fdf6e3] p-6 text-center">
+                <div className="text-3xl mb-2">🔒</div>
+                <h3 className="font-serif text-xl font-black text-[#171717]">Unlock Full Access</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-4">
+                  Continue reading &ldquo;{item.title}&rdquo; and support {creator}
+                </p>
                 {!isConnected ? (
-                  <div className="rounded-2xl border-2 border-forest/10 bg-white p-6 text-center">
-                    <p className="font-serif text-lg font-bold text-forest">Connect your wallet to unlock this content</p>
-                    <button
-                      type="button"
-                      onClick={() => setWalletOpen(true)}
-                      className="mt-4 inline-flex rounded-full bg-gold px-8 py-3 font-black text-foreground"
-                    >
-                      Connect Wallet
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWalletOpen(true)}
+                    className="inline-flex rounded-full bg-[#FFBF00] px-8 py-3 font-black text-[#171717]"
+                  >
+                    Connect Wallet
+                  </button>
                 ) : validCreator ? (
                   <PurchaseFlow
                     contentId={item.id}
@@ -351,19 +408,20 @@ export function LearnDetailClient({ id }: { id: string }) {
 
               {/* Video player — supports both video_url (legacy) and file_url (new API) */}
               {item.type === "video" && (item.video_url ?? item.file_url) ? (
-                <div className="mt-2 overflow-hidden rounded-2xl bg-[#171717]">
+                <div className="mt-2 rounded-2xl overflow-hidden bg-black aspect-video">
                   {(() => {
                     const src = item.video_url ?? item.file_url ?? ''
                     return src.includes("youtube.com") || src.includes("youtu.be") || src.includes("vimeo.com") ? (
                       <iframe
-                        src={src.replace("watch?v=", "embed/")}
-                        className="aspect-video w-full"
+                        src={getEmbedUrl(src)}
+                        className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
+                        title={item.title}
                       />
                     ) : (
                       // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <video src={src} controls className="w-full rounded-2xl" />
+                      <video src={src} controls className="w-full h-full" />
                     )
                   })()}
                 </div>

@@ -99,6 +99,9 @@ export function HomeClient() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [categoryCounts, setCategoryCounts] = useState<CategoryCounts>({});
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [creatorOfMonth, setCreatorOfMonth] = useState<{
+    id: string; full_name: string; bio: string | null; avatar_url: string | null; country: string | null; xp: number; level: string
+  } | null>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -130,6 +133,11 @@ export function HomeClient() {
       .then((result: { data?: CategoryCounts }) => setCategoryCounts(result.data ?? {}))
       .catch(() => setCategoryCounts({}))
       .finally(() => setLoadingCategories(false));
+
+    fetch("/api/creator-of-month")
+      .then((r) => r.json())
+      .then((d: { data?: { id: string; full_name: string; bio: string | null; avatar_url: string | null; country: string | null; xp: number; level: string } | null }) => setCreatorOfMonth(d.data ?? null))
+      .catch(() => { /* ignore */ })
   }, []);
 
   const stats = [
@@ -259,6 +267,42 @@ export function HomeClient() {
           </div>
         </div>
       </section>
+
+      {/* ── CREATOR OF THE MONTH ── */}
+      {creatorOfMonth && (
+        <section className="bg-[#fdf6e3] py-20">
+          <div className="mx-auto max-w-4xl px-4 md:px-8">
+            <div className="text-center mb-8">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#FFBF00]/20 px-4 py-1.5 text-sm font-bold text-[#1a4731]">
+                ⭐ Creator of the Month
+              </span>
+            </div>
+            <div className="rounded-3xl bg-white p-8 md:p-10 border border-gray-100 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+              {creatorOfMonth.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={creatorOfMonth.avatar_url} alt={creatorOfMonth.full_name} className="h-24 w-24 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="h-24 w-24 rounded-full bg-[#1a4731] flex items-center justify-center text-white font-black text-3xl flex-shrink-0">
+                  {creatorOfMonth.full_name?.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="flex-1">
+                <h3 className="font-serif text-2xl font-black text-[#171717]">{creatorOfMonth.full_name}</h3>
+                {creatorOfMonth.country && <p className="text-gray-500 mt-1">{creatorOfMonth.country}</p>}
+                {creatorOfMonth.bio && <p className="text-gray-600 mt-3 leading-relaxed">{creatorOfMonth.bio}</p>}
+                <div className="flex items-center gap-3 mt-4 justify-center md:justify-start">
+                  <span className="rounded-full bg-[#FFBF00]/20 px-3 py-1 text-xs font-bold text-[#1a4731]">{creatorOfMonth.level}</span>
+                  <span className="text-xs text-gray-400">{creatorOfMonth.xp} XP</span>
+                </div>
+              </div>
+              <Link href={`/tutor/${creatorOfMonth.id}`}
+                className="rounded-full bg-[#FFBF00] px-6 py-3 font-black text-[#171717] hover:bg-[#e6ac00] transition-all flex-shrink-0">
+                View Profile →
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── LATEST CONTENT ── */}
       <section className="bg-[#f8f4ef] py-20">
