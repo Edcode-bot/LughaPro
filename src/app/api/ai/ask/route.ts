@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { askGemini } from '@/lib/gemini'
+import { askGroq } from '@/lib/groq'
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   chat: `You are LughaPro's friendly cultural and language guide for African languages and heritage. Be warm, knowledgeable, and concise. If you don't know something specific, say so honestly rather than making it up.`,
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.chat
 
   try {
-    const reply = await askGemini(systemPrompt, message)
+    const reply = await askGroq(systemPrompt, message)
     return NextResponse.json({ reply })
   } catch (err) {
     console.error('AI request failed:', err)
