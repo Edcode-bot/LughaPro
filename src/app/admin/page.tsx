@@ -97,6 +97,36 @@ export default function AdminPage() {
     { key: 'broadcast', label: 'Broadcast' },
   ]
 
+  async function handleDeleteUser(userId: string) {
+    if (!confirm('Delete this user and all their content? This cannot be undone.')) return
+    const res = await fetch('/api/admin/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address ?? '' },
+      body: JSON.stringify({ type: 'user', id: userId }),
+    })
+    const data = await res.json() as { success?: boolean; error?: string }
+    if (data.success) {
+      setUsers(prev => prev.filter(u => u.id !== userId))
+    } else {
+      alert('Delete failed: ' + (data.error ?? 'unknown error'))
+    }
+  }
+
+  async function handleDeleteContent(id: string, type: string) {
+    if (!confirm('Delete this content permanently?')) return
+    const res = await fetch('/api/admin/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': address ?? '' },
+      body: JSON.stringify({ type, id }),
+    })
+    const data = await res.json() as { success?: boolean; error?: string }
+    if (data.success) {
+      setContent(prev => prev.filter(c => c.id !== id))
+    } else {
+      alert('Delete failed: ' + (data.error ?? 'unknown error'))
+    }
+  }
+
   async function sendBroadcast() {
     if (!address || !broadcastTitle.trim() || !broadcastMessage.trim()) return
     setBroadcasting(true)
@@ -222,8 +252,12 @@ export default function AdminPage() {
                               }`}>{u.role}</span>
                             </td>
                             <td className="px-5 py-4 text-gray-400 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
-                            <td className="px-5 py-4">
+                            <td className="px-5 py-4 flex items-center gap-3">
                               <Link href={`/tutor/${u.id}`} className="text-xs font-bold text-[#1a4731] hover:underline">View →</Link>
+                              <button onClick={() => void handleDeleteUser(u.id)}
+                                className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-500 hover:text-white transition-colors">
+                                Delete
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -252,6 +286,7 @@ export default function AdminPage() {
                           <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Price</th>
                           <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
                           <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Published</th>
+                          <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -269,10 +304,16 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="px-5 py-4 text-gray-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                            <td className="px-5 py-4">
+                              <button onClick={() => void handleDeleteContent(c.id, c.type)}
+                                className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-500 hover:text-white transition-colors">
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         ))}
                         {content.length === 0 && (
-                          <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">No content found</td></tr>
+                          <tr><td colSpan={7} className="px-5 py-8 text-center text-gray-400">No content found</td></tr>
                         )}
                       </tbody>
                     </table>

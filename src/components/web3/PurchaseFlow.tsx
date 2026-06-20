@@ -175,25 +175,33 @@ export function PurchaseFlow({
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
 
       setTxHash(hash)
-
-      await fetch('/api/purchases', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-wallet-address': address,
-        },
-        body: JSON.stringify({
-          content_id: contentId,
-          content_type: contentType,
-          amount: priceUSD,
-          payment_method: payToken,
-          tx_hash: hash,
-          status: 'paid',
-        }),
-      })
-
       setStep('done')
       onSuccess(hash)
+
+      // Record to DB after showing success — failures here must not show "Transaction failed"
+      try {
+        const recordRes = await fetch('/api/purchases', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-wallet-address': address,
+          },
+          body: JSON.stringify({
+            content_id: contentId,
+            content_type: contentType,
+            amount: priceUSD,
+            payment_method: payToken,
+            tx_hash: hash,
+            status: 'paid',
+          }),
+        })
+        const recordData = await recordRes.json() as { error?: string }
+        if (!recordRes.ok || recordData.error) {
+          console.error('Failed to record purchase in DB (on-chain tx succeeded):', recordData)
+        }
+      } catch (recordErr) {
+        console.error('Purchase recording network error (on-chain tx succeeded):', recordErr)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled')) {

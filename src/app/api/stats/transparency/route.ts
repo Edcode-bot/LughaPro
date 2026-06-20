@@ -7,7 +7,7 @@ export async function GET() {
   const [creators, content, purchases, certificates] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('posts').select('id', { count: 'exact', head: true }),
-    supabase.from('purchases').select('amount, payment_method, tx_hash, created_at').order('created_at', { ascending: false }),
+    supabase.from('purchases').select('amount, payment_method, tx_hash, purchased_at').order('purchased_at', { ascending: false }),
     supabase.from('certificates').select('id', { count: 'exact', head: true }),
   ])
 
@@ -24,7 +24,7 @@ export async function GET() {
     amount: p.amount,
     method: p.payment_method,
     tx_hash: p.tx_hash,
-    date: p.created_at,
+    date: p.purchased_at,
   }))
 
   return NextResponse.json({
