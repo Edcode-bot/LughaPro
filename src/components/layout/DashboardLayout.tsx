@@ -14,6 +14,8 @@ import {
   PenSquare,
   Settings,
   Shield,
+  ShieldCheck,
+  Sparkles,
   Trophy,
   Wallet,
   X,
@@ -42,6 +44,8 @@ const allLinks = [
   { href: "/certificates", label: "Certificates", icon: Award },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/transparency", label: "Transparency", icon: ShieldCheck },
+  { href: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -56,6 +60,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/leaderboard": "Leaderboard",
   "/settings": "Settings",
   "/admin": "Admin Dashboard",
+  "/transparency": "Transparency",
+  "/ai-assistant": "AI Assistant",
 };
 
 export function DashboardLayout({ children }: { children: ReactNode; role?: string }) {
