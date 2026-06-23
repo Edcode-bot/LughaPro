@@ -1,7 +1,8 @@
 export const CONTRACT_ADDRESSES = {
   celo: {
     LughaPayment: '0xFaBAC9A356C001dC3B32352e9b0f0B4D7c171B41' as `0x${string}`,
-    LughaPaymentV2: '0x99e6eaf7952b9c45658C69f0999Ac8503989B003' as `0x${string}`,
+    LughaPaymentV2: '0x99e6eaf7952b9c45658C69f0999Ac8503989B003' as `0x${string}`, // kept for hasPurchased reads on historical txns
+    LughaPaymentV3: '0x02271d4E393E18ea62E36509C7Ed9dbB0c89ed7b' as `0x${string}`,
     LughaReferral: '0x0EBD10ce94576D523Dcb13BA3b4Fb48d4a49b221' as `0x${string}`,
     LughaCertificate: '0xcc908CF79314335BAd128dEBfA929B6E99c94F7F' as `0x${string}`,
     cUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as `0x${string}`,
@@ -61,6 +62,8 @@ export const LUGHA_PAYMENT_V2_ABI = [
     { name: 'token', type: 'address' }
   ]},
 ] as const
+
+export const LUGHA_PAYMENT_V3_ABI = LUGHA_PAYMENT_V2_ABI
 
 export const LUGHA_REFERRAL_ABI = [
   { type: 'function', name: 'registerReferral', inputs: [{ name: 'referrer', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },

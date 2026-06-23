@@ -4,7 +4,10 @@ import { createServiceRoleClient } from '@/lib/supabase-service-role'
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const contentId = searchParams.get('content_id')
-  const wallet = searchParams.get('wallet')?.toLowerCase()
+  const wallet = (
+    request.headers.get('x-wallet-address') ??
+    searchParams.get('wallet')
+  )?.toLowerCase()
 
   if (!contentId || !wallet) {
     return NextResponse.json({ purchased: false })

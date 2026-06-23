@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { parseUnits, parseEther, keccak256, stringToHex, encodePacked, formatUnits } from 'viem'
 import { useWriteContract, useReadContract, useAccount, usePublicClient, useBalance, useChainId } from 'wagmi'
-import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_V2_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
+import { CONTRACT_ADDRESSES, LUGHA_PAYMENT_V2_ABI, LUGHA_PAYMENT_V3_ABI, CUSD_ABI, USDT_ABI } from '@/lib/contracts'
 import { ContentType } from '@/types'
 
 type PaymentToken = 'cusd' | 'usdt' | 'celo'
@@ -41,7 +42,20 @@ export function PurchaseFlow({
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')
   const [payToken, setPayToken] = useState<PaymentToken>('cusd')
+  const [supportMode, setSupportMode] = useState(false)
+  const [alreadyOwned, setAlreadyOwned] = useState(false)
   const { writeContractAsync } = useWriteContract()
+
+  // Check DB ownership first (fast, no gas)
+  useEffect(() => {
+    if (!address || !contentId) return
+    fetch(`/api/purchases/check?content_id=${encodeURIComponent(contentId)}`, {
+      headers: { 'x-wallet-address': address },
+    })
+      .then((r) => r.json())
+      .then((d: { purchased?: boolean }) => setAlreadyOwned(d.purchased ?? false))
+      .catch(() => {})
+  }, [address, contentId])
 
   // Token balances
   const { data: cusdBalance } = useReadContract({
@@ -108,6 +122,9 @@ export function PurchaseFlow({
       const creatorWalletAddress = creatorAddress as `0x${string}`
       let hash: `0x${string}`
 
+      const paymentContract = CONTRACT_ADDRESSES.celo.LughaPaymentV3 || CONTRACT_ADDRESSES.celo.LughaPaymentV2
+      const paymentAbi = CONTRACT_ADDRESSES.celo.LughaPaymentV3 ? LUGHA_PAYMENT_V3_ABI : LUGHA_PAYMENT_V2_ABI
+
       if (payToken === 'celo') {
         setStep('purchasing')
         try {
@@ -115,7 +132,7 @@ export function PurchaseFlow({
           const creatorAddr = creatorAddress as `0x${string}`
 
           console.log('Calling purchaseWithCELO:', {
-            contract: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
+            contract: paymentContract,
             purchaseId,
             creator: creatorAddr,
             contentId: contentIdBytes,
@@ -123,8 +140,8 @@ export function PurchaseFlow({
           })
 
           hash = await writeContractAsync({
-            address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
-            abi: LUGHA_PAYMENT_V2_ABI,
+            address: paymentContract,
+            abi: paymentAbi,
             functionName: 'purchaseWithCELO',
             args: [purchaseId, creatorAddr, contentIdBytes],
             value: celoAmount,
@@ -157,15 +174,15 @@ export function PurchaseFlow({
           address: paymentToken,
           abi: tokenAbi,
           functionName: 'approve',
-          args: [CONTRACT_ADDRESSES.celo.LughaPaymentV2, amount],
+          args: [paymentContract, amount],
           chainId: 42220,
         })
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
 
         setStep('purchasing')
         hash = await writeContractAsync({
-          address: CONTRACT_ADDRESSES.celo.LughaPaymentV2,
-          abi: LUGHA_PAYMENT_V2_ABI,
+          address: paymentContract,
+          abi: paymentAbi,
           functionName: 'purchaseWithToken',
           args: [purchaseId, creatorWalletAddress, contentIdBytes, amount, paymentToken],
           chainId: 42220,
@@ -238,6 +255,32 @@ export function PurchaseFlow({
         <button type="button" onClick={() => onSuccess(txHash)} className="mt-5 w-full rounded-full bg-[#FFBF00] py-3 font-black text-[#171717]">
           Read Now
         </button>
+      </div>
+    )
+  }
+
+  // Already owned — show ownership confirmation + support-creator opt-in
+  if (alreadyOwned && !supportMode) {
+    return (
+      <div className="rounded-2xl bg-white p-6 shadow-sm space-y-3">
+        <div className="rounded-xl bg-[#1a4731]/10 border border-[#1a4731]/20 p-4 text-center">
+          <div className="text-2xl mb-1">✓</div>
+          <p className="font-semibold text-[#1a4731] text-sm">You already own this content</p>
+          <p className="text-xs text-gray-500 mt-1">It's available in your library.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSupportMode(true)}
+          className="w-full rounded-full border border-[#FFBF00] py-2.5 text-sm font-semibold text-[#1a4731] hover:bg-[#FFBF00] hover:text-[#171717] transition-all"
+        >
+          💛 Buy again to support the creator
+        </button>
+        <Link
+          href="/library"
+          className="block w-full rounded-full bg-[#1a4731] py-2.5 text-center text-sm font-bold text-white"
+        >
+          Go to My Library →
+        </Link>
       </div>
     )
   }
@@ -322,7 +365,11 @@ export function PurchaseFlow({
         disabled={!hasEnough || step === 'approving' || step === 'purchasing'}
         className="mt-4 w-full rounded-full bg-[#FFBF00] py-3 font-black text-[#171717] disabled:opacity-50"
       >
-        {step === 'idle' || step === 'error' ? `Pay ${priceUSD} ${tokenLabel(payToken)}` : 'Processing…'}
+        {step === 'idle' || step === 'error'
+          ? supportMode
+            ? `💛 Support Creator — ${priceUSD} ${tokenLabel(payToken)}`
+            : `Pay ${priceUSD} ${tokenLabel(payToken)}`
+          : 'Processing…'}
       </button>
       <p className="mt-2 text-center text-xs text-foreground/40">
         Powered by Celo blockchain
