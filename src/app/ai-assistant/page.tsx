@@ -54,7 +54,7 @@ export default function AIAssistantPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl">
+      <div className="w-full max-w-2xl">
 
         <div className="rounded-2xl overflow-hidden border border-gray-100 bg-[#1a4731]">
 
@@ -100,19 +100,24 @@ export default function AIAssistantPage() {
           </div>
 
           {/* Input */}
-          <div className="bg-[#fdf6e3] px-4 pb-4">
-            <div className="flex gap-2 border-t border-gray-200 pt-3">
-              <input
-                type="text"
+          <div className="bg-[#fdf6e3] px-3 pb-4 sm:px-4">
+            <div className="flex items-end gap-2 border-t border-gray-200 pt-3">
+              <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
                 placeholder={modeLabels[mode].placeholder}
                 disabled={!address}
-                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm focus:border-[#FFBF00] focus:outline-none bg-white disabled:opacity-50"
+                rows={1}
+                className="min-w-0 flex-1 resize-none rounded-2xl border border-gray-200 px-4 py-2.5 text-sm focus:border-[#FFBF00] focus:outline-none bg-white disabled:opacity-50 max-h-32 overflow-y-auto"
+                style={{ fieldSizing: 'content' } as React.CSSProperties}
               />
-              <button onClick={handleSend} disabled={!input.trim() || loading || !address}
-                className="rounded-full bg-[#FFBF00] px-5 py-2.5 text-sm font-black text-[#171717] hover:bg-[#e6ac00] disabled:opacity-40 transition-colors">
+              <button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={!input.trim() || loading || !address}
+                className="shrink-0 rounded-full bg-[#FFBF00] px-4 py-2.5 text-sm font-black text-[#171717] hover:bg-[#e6ac00] disabled:opacity-40 transition-colors"
+              >
                 Send
               </button>
             </div>

@@ -139,8 +139,9 @@ function CertificatesClient() {
           ) : certificates.length === 0 ? (
             <div className="mt-8 rounded-2xl bg-[#fdf6e3] p-12 text-center">
               <div className="text-5xl mb-4">🏅</div>
-              <p className="text-lg font-bold text-[#1a4731]">
-                No certificates yet. Purchase and complete content to earn your first certificate.
+              <p className="text-lg font-bold text-[#1a4731]">No certificates yet</p>
+              <p className="mt-2 text-sm text-gray-600 max-w-sm mx-auto">
+                Purchase content and then tap <strong>Mint Certificate</strong> on the content page to earn a blockchain-verified NFT certificate on Celo.
               </p>
               <Link href="/explore" className="mt-6 inline-flex rounded-full bg-[#FFBF00] px-6 py-3 font-bold text-[#171717] hover:bg-[#e6ac00]">
                 Explore Content

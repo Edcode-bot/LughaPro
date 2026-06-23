@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const { data: purchases, error } = await supabase
       .from('purchases')
       .select('*')
-      .eq('user_wallet', wallet)
+      .ilike('user_wallet', wallet)
       .order('purchased_at', { ascending: false })
 
     if (error) return jsonOk({ items: [] }, 'Purchases loaded')
