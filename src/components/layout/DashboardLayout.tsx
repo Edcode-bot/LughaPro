@@ -7,6 +7,7 @@ import {
   BookOpen,
   Compass,
   FileText,
+  GraduationCap,
   Home,
   LayoutDashboard,
   LogOut,
@@ -39,6 +40,7 @@ const allLinks = [
   { href: "/library", label: "My Library", icon: BookOpen },
   { href: "/my-content", label: "My Content", icon: FileText },
   { href: "/publish", label: "Publish", icon: PenSquare },
+  { href: "/academy", label: "Creator Academy", icon: GraduationCap },
   { href: "/earnings", label: "Earnings", icon: BarChart3 },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/certificates", label: "Certificates", icon: Award },
@@ -62,6 +64,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin": "Admin Dashboard",
   "/transparency": "Transparency",
   "/ai-assistant": "AI Assistant",
+  "/academy": "Creator Academy",
 };
 
 export function DashboardLayout({ children }: { children: ReactNode; role?: string }) {

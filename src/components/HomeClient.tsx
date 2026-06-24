@@ -268,6 +268,25 @@ export function HomeClient() {
         </div>
       </section>
 
+      {/* ── CREATOR ACADEMY BANNER ── */}
+      <section className="bg-[#fdf6e3] py-12">
+        <div className="mx-auto max-w-4xl px-4 md:px-8">
+          <div className="rounded-2xl border border-[#FFBF00]/30 bg-white p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <span className="text-xs font-black tracking-widest uppercase text-[#FFBF00]">Free Resource</span>
+              <h3 className="font-serif text-2xl font-black text-[#171717] mt-1">Creator Academy</h3>
+              <p className="text-gray-500 mt-1 max-w-md">
+                A four-module guide to packaging your African cultural knowledge and earning from it — written for creators, not tech people.
+              </p>
+            </div>
+            <Link href="/academy"
+              className="flex-shrink-0 rounded-full bg-[#1a4731] px-6 py-3 font-black text-white hover:bg-[#2d6a4f] transition-all">
+              Read the Guide →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── CREATOR OF THE MONTH ── */}
       {creatorOfMonth && (
         <section className="bg-[#fdf6e3] py-20">
