@@ -47,7 +47,7 @@ const allLinks = [
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/transparency", label: "Transparency", icon: ShieldCheck },
-  { href: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
+  { href: "/ai-assistant", label: "AI Suite", icon: Sparkles },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -63,7 +63,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/settings": "Settings",
   "/admin": "Admin Dashboard",
   "/transparency": "Transparency",
-  "/ai-assistant": "AI Assistant",
+  "/ai-assistant": "AI Language Suite",
   "/academy": "Creator Academy",
 };
 
